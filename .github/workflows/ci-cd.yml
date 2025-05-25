@@ -78,7 +78,7 @@ jobs:
         run: lua -e "require('src.tests.run_all')"
       
       - name: Upload test coverage
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: test-coverage
           path: coverage/
@@ -138,7 +138,7 @@ jobs:
         run: ./build.sh --no-docker
       
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: church-management-dist
           path: dist/
@@ -254,7 +254,7 @@ jobs:
           fetch-depth: 0
       
       - name: Download build artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: church-management-dist
           path: dist/
