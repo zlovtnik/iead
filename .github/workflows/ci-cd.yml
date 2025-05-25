@@ -87,8 +87,11 @@ jobs:
           output: 'trivy-fs-results.sarif'
           severity: 'CRITICAL,HIGH'
       
+      # Note: This step will fail if code scanning is not enabled in the repository settings
+      # To enable: Go to your repository → Settings → Security → Code security and analysis → Code scanning → Set up → Advanced → Enable 'GitHub Advanced Security'
       - name: Upload filesystem scan results
         uses: github/codeql-action/upload-sarif@v3
+        continue-on-error: true  # Don't fail the workflow if code scanning is not enabled
         with:
           sarif_file: 'trivy-fs-results.sarif'
           category: 'trivy-fs'
@@ -175,8 +178,10 @@ jobs:
           severity: 'CRITICAL,HIGH'
           ignore-unfixed: true
       
+      # Note: This step will fail if code scanning is not enabled in the repository settings
       - name: Upload Trivy scan results
         uses: github/codeql-action/upload-sarif@v3
+        continue-on-error: true  # Don't fail the workflow if code scanning is not enabled
         with:
           sarif_file: 'trivy-image-results.sarif'
           category: 'trivy-container'

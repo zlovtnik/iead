@@ -158,7 +158,9 @@ This project uses GitHub Actions for continuous integration and deployment. The 
    - Deploy to production
    - Create a GitHub Release with changelog and artifacts
 
-### Required Secrets
+### Required Setup
+
+#### GitHub Secrets
 
 For the CI/CD pipeline to work, you need to set up the following secrets in your GitHub repository:
 
@@ -167,6 +169,16 @@ For the CI/CD pipeline to work, you need to set up the following secrets in your
 - `DEPLOY_PORT`: SSH port for deployment (usually 22)
 - `STAGING_HOST`: Hostname/IP for staging server
 - `PRODUCTION_HOST`: Hostname/IP for production server
+
+#### GitHub Advanced Security
+
+For security scanning to work properly, you need to enable GitHub Advanced Security features:
+
+1. Go to your repository → Settings → Security → Code security and analysis
+2. Enable 'GitHub Advanced Security'
+3. Enable 'Code scanning' and select 'Default' setup
+
+Note: GitHub Advanced Security is free for public repositories but requires GitHub Enterprise for private repositories.
 
 ## License
 
