@@ -8,6 +8,13 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+# Required permissions for security scanning and SARIF uploads
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  id-token: write
+
 jobs:
   lint:
     name: Lint Code
@@ -79,7 +86,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
       
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-results.sarif'
           category: 'code-scanning'
@@ -165,7 +172,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
       
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-image-results.sarif'
           category: 'container-scanning'
