@@ -5,3 +5,4 @@ logs/
 *.bak
 node_modules/
 .env
+.dist
