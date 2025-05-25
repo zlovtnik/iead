@@ -220,13 +220,24 @@ jobs:
       name: staging
       url: https://staging.church-management.example.com
     steps:
+      - name: Check required secrets
+        id: check_secrets
+        run: |
+          if [[ -n "${{ secrets.STAGING_HOST }}" && -n "${{ secrets.DEPLOY_USERNAME }}" && -n "${{ secrets.DEPLOY_KEY }}" ]]; then
+            echo "secrets_available=true" >> $GITHUB_OUTPUT
+          else
+            echo "secrets_available=false" >> $GITHUB_OUTPUT
+            echo "::warning::Required deployment secrets are not configured. Skipping deployment."
+          fi
+          
       - name: Deploy to staging environment
+        if: steps.check_secrets.outputs.secrets_available == 'true'
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.STAGING_HOST }}
           username: ${{ secrets.DEPLOY_USERNAME }}
           key: ${{ secrets.DEPLOY_KEY }}
-          port: ${{ secrets.DEPLOY_PORT }}
+          port: ${{ secrets.DEPLOY_PORT || '22' }}
           script: |
             cd /opt/church-management-staging
             docker-compose -f docker-compose.staging.yml pull
@@ -241,13 +252,24 @@ jobs:
       name: production
       url: https://church-management.example.com
     steps:
+      - name: Check required secrets
+        id: check_secrets
+        run: |
+          if [[ -n "${{ secrets.PRODUCTION_HOST }}" && -n "${{ secrets.DEPLOY_USERNAME }}" && -n "${{ secrets.DEPLOY_KEY }}" ]]; then
+            echo "secrets_available=true" >> $GITHUB_OUTPUT
+          else
+            echo "secrets_available=false" >> $GITHUB_OUTPUT
+            echo "::warning::Required deployment secrets are not configured. Skipping production deployment."
+          fi
+          
       - name: Deploy to production
+        if: steps.check_secrets.outputs.secrets_available == 'true'
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.PRODUCTION_HOST }}
           username: ${{ secrets.DEPLOY_USERNAME }}
           key: ${{ secrets.DEPLOY_KEY }}
-          port: ${{ secrets.DEPLOY_PORT }}
+          port: ${{ secrets.DEPLOY_PORT || '22' }}
           script: |
             cd /opt/church-management
             docker-compose -f docker-compose.production.yml pull
