@@ -6,6 +6,14 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+# Required permissions for security scanning and package publishing
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+  actions: read
+  id-token: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
