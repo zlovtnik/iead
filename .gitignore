@@ -1,8 +1,69 @@
+# Lua specific
+*.lua~
+*.luac
+luarocks/
+.luarocks/
+.rocks/
+
+# SQLite databases
+*.sqlite
+*.sqlite3
+*.db
+
+# Logs
 logs/
 *.log
-*.sqlite3
+
+# Editor files
 *.swp
+*.swo
 *.bak
-node_modules/
+*~
+.vscode/
+.idea/
+.DS_Store
+
+# Environment variables
 .env
-.dist
+.env.*
+!.env.example
+
+# Build/distribution directories
+dist/
+.dist/
+build/
+bin/
+
+# Specific distribution files
+*-*.tar.gz
+*-*.zip
+*-*.rock
+*-*.rockspec
+dist/church-management-*/
+
+
+# Dependencies
+node_modules/
+vendor/
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Test coverage
+coverage/
+
+# Temporary files
+tmp/
+temp/
+
+# Generated files
+*.generated.*
+
+# OS specific
+Thumbs.db
+.directory
+.Trash-*
+
+# Project specific
+church_management.db
