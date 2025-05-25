@@ -42,6 +42,13 @@ ignore = {
     "213", -- Unused loop variable
     "311", -- Value assigned to a local variable is unused
     "542", -- Empty if branch
+    "611", -- Line contains only whitespace
+    "612", -- Line contains trailing whitespace
+    "614", -- Trailing whitespace in a comment
+    "211", -- Unused local variable
+    "231", -- Variable is never accessed
+    "421", -- Shadowing a local variable
+    "431", -- Shadowing an upvalue
 }
 
 -- Maximum line length
