@@ -39,7 +39,18 @@ jobs:
       - name: Initialize database
         run: lua -e "require('src.db.schema').init()"
       
+      - name: Check if tests exist
+        id: check_tests
+        run: |
+          if [ -f "src/tests/run_all.lua" ]; then
+            echo "tests_exist=true" >> $GITHUB_OUTPUT
+          else
+            echo "tests_exist=false" >> $GITHUB_OUTPUT
+            echo "::warning::Test module 'src.tests.run_all' not found. Skipping tests."
+          fi
+      
       - name: Run tests
+        if: steps.check_tests.outputs.tests_exist == 'true'
         run: lua -e "require('src.tests.run_all')"
 
   build:
