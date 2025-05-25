@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  church-management:
+    image: church-management:latest
+    container_name: church-management
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - church_data:/data
+    environment:
+      - APP_ENV=production
+      - PORT=8080
+      - HOST=0.0.0.0
+      - DB_PATH=/data/church_management.db
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  church_data:
+    driver: local

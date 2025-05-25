@@ -1,0 +1,7 @@
+logs/
+*.log
+*.sqlite3
+*.swp
+*.bak
+node_modules/
+.env
