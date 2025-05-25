@@ -24,6 +24,7 @@ jobs:
         uses: leafo/gh-actions-lua@v9
         with:
           luaVersion: "5.4"
+          buildCache: false  # Disable build cache to avoid cache service errors
       
       - name: Set up LuaRocks
         uses: leafo/gh-actions-luarocks@v4
@@ -51,6 +52,7 @@ jobs:
         uses: leafo/gh-actions-lua@v9
         with:
           luaVersion: "5.4"
+          buildCache: false  # Disable build cache to avoid cache service errors
       
       - name: Set up LuaRocks
         uses: leafo/gh-actions-luarocks@v4
