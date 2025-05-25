@@ -1,5 +1,0 @@
-#!/usr/bin/env lua
-package.path = package.path .. ";./?.lua"
--- Environment variable is set externally via APP_ENV
--- Standard Lua doesn't have os.setenv
-dofile("app.lua")
