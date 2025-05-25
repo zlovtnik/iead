@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  church-management:
+    image: ghcr.io/${GITHUB_REPOSITORY}:develop
+    container_name: church-management-staging
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    environment:
+      - APP_ENV=staging
+      - PORT=8080
+      - HOST=0.0.0.0
+      - DB_PATH=/data/church_management.db
+    volumes:
+      - church-management-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  church-management-data:
+    name: church-management-staging-data

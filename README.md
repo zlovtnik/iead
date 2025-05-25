@@ -124,6 +124,50 @@ curl -X POST http://localhost:8080/tithes/1/pay \
   -d "notes=Paid on Sunday service"
 ```
 
+## CI/CD Pipeline
+
+This project uses GitHub Actions for continuous integration and deployment. The pipeline includes:
+
+### Workflows
+
+- **Lint**: Static code analysis using `luacheck`
+- **Test**: Run all tests in the application
+- **Security Scan**: Vulnerability scanning using Trivy
+- **Build**: Build the application package
+- **Docker**: Build and push Docker images to GitHub Container Registry
+- **Deploy**: Automated deployment to staging and production environments
+
+### Environments
+
+- **Staging**: Deployed automatically when changes are pushed to the `develop` branch
+- **Production**: Deployed automatically when:
+  - Changes are pushed to the `main` branch
+  - A new version tag (e.g., `v1.0.0`) is created
+
+### Release Process
+
+1. Create and push a new tag following semantic versioning:
+   ```bash
+   git tag v1.0.0
+   git push origin v1.0.0
+   ```
+
+2. The CI/CD pipeline will automatically:
+   - Build and test the application
+   - Create a Docker image with the version tag
+   - Deploy to production
+   - Create a GitHub Release with changelog and artifacts
+
+### Required Secrets
+
+For the CI/CD pipeline to work, you need to set up the following secrets in your GitHub repository:
+
+- `DEPLOY_USERNAME`: SSH username for deployment
+- `DEPLOY_KEY`: SSH private key for deployment
+- `DEPLOY_PORT`: SSH port for deployment (usually 22)
+- `STAGING_HOST`: Hostname/IP for staging server
+- `PRODUCTION_HOST`: Hostname/IP for production server
+
 ## License
 
 MIT
