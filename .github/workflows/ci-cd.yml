@@ -83,6 +83,10 @@ jobs:
         if: steps.check_tests.outputs.tests_exist == 'true'
         run: lua -e "require('src.tests.run_all')"
       
+      - name: Create coverage directory if tests don't exist
+        if: steps.check_tests.outputs.tests_exist != 'true'
+        run: mkdir -p coverage
+      
       - name: Upload test coverage
         uses: actions/upload-artifact@v4
         with:
