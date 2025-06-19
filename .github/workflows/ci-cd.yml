@@ -170,14 +170,9 @@ jobs:
       - name: Setup JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
         env:
-          JF_URL: ${{ secrets.JFROG_URL || 'https://trial8lihs2.jfrog.io' }}
-          JF_USER: ${{ secrets.JFROG_USER }}
+          JF_URL: https://trial8lihs2.jfrog.io
           JF_ACCESS_TOKEN: ${{ secrets.JFROG_TOKEN }}
 
-      - name: Configure JFrog server
-        run: |
-          jfrog config add rt-server --url=$JF_URL --user=$JF_USER --access-token=$JF_ACCESS_TOKEN --interactive=false
-          jfrog config use rt-server
 
       - name: Upload to JFrog Artifactory
         run: |
@@ -327,7 +322,7 @@ jobs:
         with:
           files: dist/*
           body: |
-            ## Church Management System ${{ github.ref_name }}
+            ## Church Management System ${{ fgithub.ref_name }}
             
             ${{ steps.changelog.outputs.changelog }}
             
