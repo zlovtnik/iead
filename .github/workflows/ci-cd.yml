@@ -185,58 +185,53 @@ jobs:
           echo "Artifacts uploaded to lua-generic-local/church-management/${{ github.ref_name }}/"
 
   docker:
-    name: Build & Push Docker Image
-    needs: build
+    name: Build and Push Docker Image
     runs-on: ubuntu-latest
+    needs: [build]
     if: github.event_name == 'push'
     steps:
-      - uses: actions/checkout@v3
-      
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      
-      - name: Login to JFrog Docker Registry
-        uses: docker/login-action@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4
+        env:
+          JF_URL: https://trial8lihs2.jfrog.io
+          JF_ACCESS_TOKEN: ${{ secrets.JFROG_TOKEN }}
+
+      - name: Build, Tag and Push Docker Image
+        id: docker_build
+        env:
+          IMAGE_NAME: trial8lihs2.jfrog.io/amem-docker/church-management:${{ github.run_number }}
+        run: |
+          jf docker build -t $IMAGE_NAME .
+          jf docker push $IMAGE_NAME
+          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+
+      - name: Publish Build info
+        env:
+          JFROG_CLI_BUILD_NAME: church-management-docker-build
+          JFROG_CLI_BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          jf rt build-collect-env
+          jf rt build-add-git
+          jf rt build-publish
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.20.0
         with:
-          registry: ${{ secrets.JFROG_URL || 'trial8lihs2.jfrog.io' }}
-          username: ${{ secrets.JFROG_USER }}
-          password: ${{ secrets.JFROG_TOKEN }}
-      
-      - name: Extract metadata for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ secrets.JFROG_URL || 'trial8lihs2.jfrog.io' }}/amem-docker/church-management
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=sha,format=short
-      
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: Dockerfile.production
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      
-      - name: Run Trivy vulnerability scanner on Docker image
-        uses: aquasecurity/trivy-action@0.20.0 # Pinned version
-        with:
-          image-ref: "${{ secrets.JFROG_URL || 'trial8lihs2.jfrog.io' }}/amem-docker/church-management:${{ steps.meta.outputs.version }}"
+          image-ref: ${{ steps.docker_build.outputs.image_name }}
           format: 'sarif'
           output: 'trivy-image-results.sarif'
           severity: 'CRITICAL,HIGH'
           ignore-unfixed: true
-      
-      # Note: This step will fail if code scanning is not enabled in the repository settings
+          registry: 'trial8lihs2.jfrog.io'
+          username: ${{ secrets.JFROG_USER }}
+          password: ${{ secrets.JFROG_TOKEN }}
+
       - name: Upload Trivy scan results
         uses: github/codeql-action/upload-sarif@v3
-        continue-on-error: true  # Don't fail the workflow if code scanning is not enabled
+        continue-on-error: true
         with:
           sarif_file: 'trivy-image-results.sarif'
           category: 'trivy-container'
