@@ -25,6 +25,7 @@ jobs:
           jf docker build -t $IMAGE_NAME .
           jf docker push $IMAGE_NAME
           
+          
       - name: Publish Build info With JFrog CLI
         env:
           # Generated and maintained by GitHub
