@@ -20,7 +20,7 @@ jobs:
 
       - name: Build Tag and push Docker Image
         env:
-          IMAGE_NAME: trial8lihs2.jfrog.io/amem-docker/jfrog-docker-example-image:${{ github.run_number }}
+          IMAGE_NAME: trial8lihs2.jfrog.io/amem-docker/church-management:${{ github.run_number }}
         run: |
           jf docker build -t $IMAGE_NAME .
           jf docker push $IMAGE_NAME
@@ -28,7 +28,7 @@ jobs:
       - name: Publish Build info With JFrog CLI
         env:
           # Generated and maintained by GitHub
-          JFROG_CLI_BUILD_NAME: jfrog-docker-build-example
+          JFROG_CLI_BUILD_NAME: church-management-build
           # JFrog organization secret
           JFROG_CLI_BUILD_NUMBER : ${{ github.run_number }}
         run: |
