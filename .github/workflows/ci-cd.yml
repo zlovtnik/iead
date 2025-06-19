@@ -198,7 +198,7 @@ jobs:
       - name: Login to JFrog Docker Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ secrets.JFROG_URL | default('trial8lihs2.jfrog.io') }}
+          registry: ${{ secrets.JFROG_URL || 'trial8lihs2.jfrog.io' }}
           username: ${{ secrets.JFROG_USER }}
           password: ${{ secrets.JFROG_TOKEN }}
       
@@ -206,7 +206,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.JFROG_URL | default('trial8lihs2.jfrog.io') }}/amem-docker/church-management
+          images: ${{ secrets.JFROG_URL || 'trial8lihs2.jfrog.io' }}/amem-docker/church-management
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -227,7 +227,7 @@ jobs:
       - name: Run Trivy vulnerability scanner on Docker image
         uses: aquasecurity/trivy-action@0.20.0 # Pinned version
         with:
-          image-ref: "${{ secrets.JFROG_URL | default('trial8lihs2.jfrog.io') }}/amem-docker/church-management:${{ steps.meta.outputs.version }}"
+          image-ref: "${{ secrets.JFROG_URL || 'trial8lihs2.jfrog.io' }}/amem-docker/church-management:${{ steps.meta.outputs.version }}"
           format: 'sarif'
           output: 'trivy-image-results.sarif'
           severity: 'CRITICAL,HIGH'
@@ -325,7 +325,7 @@ jobs:
         id: changelog
         uses: metcalfc/changelog-generator@v4.0.1
         with:
-          myToken: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Create Release
         uses: softprops/action-gh-release@v1
