@@ -216,9 +216,8 @@ jobs:
     needs: docker
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
-    environment:
-      name: staging
-      url: https://staging.church-management.example.com
+    # Environment configuration removed to fix validation error
+    # You can re-add this after creating the 'staging' environment in GitHub repository settings
     steps:
       - name: Check required secrets
         id: check_secrets
