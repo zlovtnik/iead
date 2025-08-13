@@ -18,7 +18,9 @@ dependencies = {
    "lua >= 5.1",
    "luasql-sqlite3",
    "lua-cjson",
-   "luasocket"
+   "luasocket",
+   "bcrypt",
+   "lua-resty-random"
 }
 build = {
    type = "builtin",
@@ -40,6 +42,7 @@ build = {
       ["src.routes.router"] = "src/routes/router.lua",
       ["src.utils.http"] = "src/utils/http.lua",
       ["src.utils.json"] = "src/utils/json.lua",
+      ["src.utils.security"] = "src/utils/security.lua",
       ["src.views.home"] = "src/views/home.lua",
       ["src.db.schema"] = "src/db/schema.lua"
    },
