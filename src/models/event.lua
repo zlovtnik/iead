@@ -165,4 +165,23 @@ function Event.delete(id)
   return true
 end
 
+-- Find upcoming events
+function Event.find_upcoming()
+  local conn, env = Event.get_connection()
+  local cursor = conn:execute("SELECT * FROM events WHERE start_date > datetime('now') ORDER BY start_date ASC")
+  
+  local events = {}
+  local row = cursor:fetch({}, "a")
+  while row do
+    table.insert(events, row)
+    row = cursor:fetch({}, "a")
+  end
+  
+  cursor:close()
+  conn:close()
+  env:close()
+  
+  return events
+end
+
 return Event
