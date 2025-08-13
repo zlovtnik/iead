@@ -62,8 +62,42 @@ function auth.rate_limit_check(identifier)
     return false
   end
   
-  local allowed, error_msg = rate_limiter.check_rate_limit(identifier)
-  return allowed
+  local current_time = os.time()
+  local key = "auth_attempts:" .. identifier
+
+  -- Initialize or get existing queue
+  local queue = rate_limit_store[key]
+  if not queue then
+    queue = {list = {}, head = 1}
+    rate_limit_store[key] = queue
+  end
+
+  -- Remove expired attempts from the beginning (oldest first)
+  -- This advances the head pointer instead of removing elements
+  while queue.head <= #queue.list and current_time - queue.list[queue.head] >= RATE_LIMIT_WINDOW do
+    queue.head = queue.head + 1
+  end
+
+  -- Perform compaction if head has grown too large to prevent unbounded growth
+  if queue.head > RATE_LIMIT_COMPACTION_THRESHOLD then
+    local new_list = {}
+    for i = queue.head, #queue.list do
+      table.insert(new_list, queue.list[i])
+    end
+    queue.list = new_list
+    queue.head = 1
+  end
+  
+  -- Check if rate limit exceeded (count active attempts)
+  local active_attempts = #queue.list - queue.head + 1
+  if active_attempts >= RATE_LIMIT_MAX_ATTEMPTS then
+    return false
+  end
+  
+  -- Record this attempt at the end of the list
+  table.insert(queue.list, current_time)
+  
+  return true
 end
 
 -- Clear rate limiting for successful authentication
