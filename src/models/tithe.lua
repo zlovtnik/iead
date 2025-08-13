@@ -299,4 +299,51 @@ function Tithe.generate_monthly_tithes(month, year)
   return results
 end
 
+-- Calculate monthly tithe for a member (10% of monthly salary)
+function Tithe.calculate_monthly_tithe(member_id)
+  local Member = require("src.models.member")
+  local member = Member.find_by_id(member_id)
+  
+  if not member or not member.salary then
+    return 0
+  end
+  
+  local monthly_salary = tonumber(member.salary) / 12
+  local tithe_amount = monthly_salary * 0.1
+  
+  return math.floor(tithe_amount * 100) / 100 -- Round to 2 decimal places
+end
+
+-- Mark tithe as paid
+function Tithe.mark_paid(id, payment_method)
+  local conn, env = Tithe.get_connection()
+  
+  -- Check if tithe exists
+  local cursor = conn:execute(string.format("SELECT id FROM tithes WHERE id = %d", id))
+  local exists = cursor:fetch()
+  cursor:close()
+  
+  if not exists then
+    conn:close()
+    env:close()
+    return nil, "Tithe not found"
+  end
+  
+  -- Mark as paid
+  conn:execute(string.format(
+    "UPDATE tithes SET is_paid = 1, payment_method = '%s' WHERE id = %d",
+    (payment_method or ""):gsub("'", "''"),
+    id
+  ))
+  
+  -- Get updated tithe
+  cursor = conn:execute(string.format("SELECT * FROM tithes WHERE id = %d", id))
+  local tithe = cursor:fetch({}, "a")
+  cursor:close()
+  conn:close()
+  env:close()
+  
+  return tithe
+end
+
 return Tithe

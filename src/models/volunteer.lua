@@ -16,15 +16,13 @@ function Volunteer.init_db()
     CREATE TABLE IF NOT EXISTS volunteers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       member_id INTEGER NOT NULL,
-      role TEXT NOT NULL,
       event_id INTEGER,
-      start_date DATE NOT NULL,
-      end_date DATE,
-      status TEXT NOT NULL, -- active, inactive, pending
+      role TEXT NOT NULL,
+      hours INTEGER DEFAULT 0,
       notes TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE,
-      FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE SET NULL
+      FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
     )
   ]]
   
@@ -94,7 +92,7 @@ function Volunteer.find_by_member(member_id)
     JOIN members m ON v.member_id = m.id
     LEFT JOIN events e ON v.event_id = e.id
     WHERE v.member_id = %d
-    ORDER BY v.start_date DESC
+    ORDER BY v.created_at DESC
   ]], member_id))
   
   local volunteers = {}
@@ -139,20 +137,18 @@ end
 
 -- Create new volunteer
 function Volunteer.create(data)
-  if not data.member_id or not data.role or not data.start_date or not data.status then
+  if not data.member_id or not data.role then
     return nil, "Missing required fields"
   end
   
   local conn, env = Volunteer.get_connection()
   local success, err = pcall(function()
     conn:execute(string.format(
-      "INSERT INTO volunteers (member_id, role, event_id, start_date, end_date, status, notes) VALUES (%d, '%s', %s, '%s', %s, '%s', '%s')",
+      "INSERT INTO volunteers (member_id, event_id, role, hours, notes) VALUES (%d, %s, '%s', %d, '%s')",
       tonumber(data.member_id),
-      data.role:gsub("'", "''"),
       data.event_id and tonumber(data.event_id) or "NULL",
-      data.start_date:gsub("'", "''"),
-      data.end_date and ("'" .. data.end_date:gsub("'", "''") .. "'") or "NULL",
-      data.status:gsub("'", "''"),
+      data.role:gsub("'", "''"),
+      tonumber(data.hours) or 0,
       (data.notes or ""):gsub("'", "''")
     ))
   end)
@@ -175,7 +171,7 @@ end
 
 -- Update volunteer
 function Volunteer.update(id, data)
-  if not data.role or not data.status then
+  if not data.role then
     return nil, "Missing required fields"
   end
   
@@ -194,12 +190,11 @@ function Volunteer.update(id, data)
   
   -- Update volunteer
   conn:execute(string.format(
-    "UPDATE volunteers SET role = '%s', event_id = %s, start_date = '%s', end_date = %s, status = '%s', notes = '%s' WHERE id = %d",
-    data.role:gsub("'", "''"),
+    "UPDATE volunteers SET member_id = %d, event_id = %s, role = '%s', hours = %d, notes = '%s' WHERE id = %d",
+    tonumber(data.member_id),
     data.event_id and tonumber(data.event_id) or "NULL",
-    data.start_date:gsub("'", "''"),
-    data.end_date and ("'" .. data.end_date:gsub("'", "''") .. "'") or "NULL",
-    data.status:gsub("'", "''"),
+    data.role:gsub("'", "''"),
+    tonumber(data.hours) or 0,
     (data.notes or ""):gsub("'", "''"),
     id
   ))
@@ -235,6 +230,24 @@ function Volunteer.delete(id)
   env:close()
   
   return true
+end
+
+-- Calculate total hours by member
+function Volunteer.total_hours_by_member(member_id)
+  local conn, env = Volunteer.get_connection()
+  local cursor = conn:execute(string.format(
+    "SELECT COALESCE(SUM(hours), 0) as total FROM volunteers WHERE member_id = %d",
+    member_id
+  ))
+  
+  local row = cursor:fetch({}, "a")
+  local total = row and row.total or 0
+  
+  cursor:close()
+  conn:close()
+  env:close()
+  
+  return total
 end
 
 return Volunteer

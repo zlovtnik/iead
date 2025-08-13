@@ -41,7 +41,7 @@ function http.parse_query_params(url)
     for pair in query:gmatch("([^&]+)") do
       local key, value = pair:match("([^=]*)=(.*)")
       if key and value then
-        params[key] = socket.url.unescape(value)
+        params[key] = http.url_decode(value)
       end
     end
   end
@@ -57,11 +57,23 @@ function http.parse_form_data(body)
   for pair in body:gmatch("([^&]+)") do
     local key, value = pair:match("([^=]*)=(.*)")
     if key and value then
-      params[key] = socket.url.unescape(value)
+      params[key] = http.url_decode(value)
     end
   end
   
   return params
+end
+
+-- Simple URL decode function
+function http.url_decode(str)
+  if not str then return "" end
+  
+  str = str:gsub("+", " ")
+  str = str:gsub("%%(%x%x)", function(h)
+    return string.char(tonumber(h, 16))
+  end)
+  
+  return str
 end
 
 return http
