@@ -5,16 +5,21 @@ local Session = require("src.models.session")
 local User = require("src.models.user")
 local json_utils = require("src.utils.json")
 local security = require("src.utils.security")
+local rate_limiter = require("src.utils.rate_limiter")
 
 local auth = {}
 
--- Rate limiting storage (in-memory for simplicity)
--- In production, this should use Redis or similar persistent storage
-local rate_limit_store = {}
-
--- Rate limiting configuration
-local RATE_LIMIT_MAX_ATTEMPTS = 5
-local RATE_LIMIT_WINDOW = 15 * 60 -- 15 minutes in seconds
+-- Initialize rate limiter
+-- This will use Redis in production if available, memory otherwise
+rate_limiter.init({
+  max_attempts = 5,
+  window_seconds = 15 * 60, -- 15 minutes
+  redis = {
+    enabled = os.getenv("REDIS_ENABLED") == "true" or false,
+    host = os.getenv("REDIS_HOST") or "127.0.0.1",
+    port = tonumber(os.getenv("REDIS_PORT")) or 6379
+  }
+})
 
 -- Role hierarchy for permission checking
 local ROLE_HIERARCHY = {
@@ -57,43 +62,27 @@ function auth.rate_limit_check(identifier)
     return false
   end
   
-  local current_time = os.time()
-  local key = "auth_attempts:" .. identifier
-  
-  -- Clean up old entries
-  if rate_limit_store[key] then
-    local attempts = rate_limit_store[key]
-    local filtered_attempts = {}
-    
-    for _, attempt_time in ipairs(attempts) do
-      if current_time - attempt_time < RATE_LIMIT_WINDOW then
-        table.insert(filtered_attempts, attempt_time)
-      end
-    end
-    
-    rate_limit_store[key] = filtered_attempts
-  else
-    rate_limit_store[key] = {}
-  end
-  
-  -- Check if rate limit exceeded
-  if #rate_limit_store[key] >= RATE_LIMIT_MAX_ATTEMPTS then
-    return false
-  end
-  
-  -- Record this attempt
-  table.insert(rate_limit_store[key], current_time)
-  
-  return true
+  local allowed, error_msg = rate_limiter.check_rate_limit(identifier)
+  return allowed
 end
 
 -- Clear rate limiting for successful authentication
 -- @param identifier string The identifier to clear
 function auth.clear_rate_limit(identifier)
   if identifier then
-    local key = "auth_attempts:" .. identifier
-    rate_limit_store[key] = nil
+    rate_limiter.clear_rate_limit(identifier)
   end
+end
+
+-- Get rate limit status for identifier
+-- @param identifier string The identifier to check
+-- @return table Rate limit status information
+function auth.get_rate_limit_status(identifier)
+  if not identifier then
+    return nil
+  end
+  
+  return rate_limiter.get_rate_limit_status(identifier)
 end
 
 -- Send authentication error response
@@ -289,10 +278,22 @@ function auth.rate_limit(identifier_func)
       identifier = tostring(client):gsub("table: ", "")
     end
     
-    if not auth.rate_limit_check(identifier) then
-      send_auth_error(client, 429, "RATE_LIMIT_EXCEEDED", 
-        string.format("Too many authentication attempts. Please try again in %d minutes", 
-          math.ceil(RATE_LIMIT_WINDOW / 60)))
+    local allowed, error_msg = rate_limiter.check_rate_limit(identifier)
+    if not allowed then
+      -- Get detailed rate limit status for better error message
+      local status = rate_limiter.get_rate_limit_status(identifier)
+      local message = error_msg or "Rate limit exceeded"
+      
+      if status and status.reset_time then
+        local time_until_reset = status.reset_time - os.time()
+        if time_until_reset > 0 then
+          local minutes = math.ceil(time_until_reset / 60)
+          message = string.format("Too many authentication attempts. Please try again in %d minute%s", 
+            minutes, minutes == 1 and "" or "s")
+        end
+      end
+      
+      send_auth_error(client, 429, "RATE_LIMIT_EXCEEDED", message)
       return false
     end
     

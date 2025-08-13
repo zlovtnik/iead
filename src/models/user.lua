@@ -4,7 +4,7 @@
 local luasql = require("luasql.sqlite3")
 local db_config = require("src.config.database")
 local security = require("src.utils.security")
-
+local validation = require("src.utils.validation")
 local User = {}
 
 -- Initialize database and create users table if it doesn't exist
@@ -162,10 +162,10 @@ function User.create(data)
   conn:close()
   env:close()
   
-  -- Convert boolean fields
+  -- Convert boolean fields using normalize_boolean
   if user then
-    user.is_active = (user.is_active == "1" or user.is_active == 1)
-    user.password_reset_required = (user.password_reset_required == "1" or user.password_reset_required == 1)
+    user.is_active = validation.normalize_boolean(user.is_active)
+    user.password_reset_required = validation.normalize_boolean(user.password_reset_required)
     -- Remove password hash from returned user
     user.password_hash = nil
   end
@@ -193,8 +193,8 @@ function User.authenticate(username, password)
     return nil, "Invalid username or password"
   end
   
-  -- Check if user is active
-  if user.is_active == "0" or user.is_active == 0 or user.is_active == false then
+  -- Check if user is active using normalized boolean check
+  if not validation.normalize_boolean(user.is_active) then
     conn:close()
     env:close()
     return nil, "Account is deactivated"

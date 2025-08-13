@@ -15,13 +15,17 @@ function MockClient:new()
   local obj = {
     response_status = nil,
     response_body = nil,
-    headers = {}
+    headers = {},
+    response_data = ""
   }
   setmetatable(obj, self)
   return obj
 end
 
 function MockClient:send(data)
+  -- Store the full response data
+  self.response_data = data
+  
   -- Parse HTTP response to extract status and body
   local status_line = data:match("HTTP/1%.1 (%d+)")
   if status_line then
@@ -52,9 +56,11 @@ local AuthRoutesTest = {}
 
 function AuthRoutesTest.setup()
   -- Clean up any existing test data
-  local db = require("src.config.database")
-  db.execute("DELETE FROM sessions")
-  db.execute("DELETE FROM users")
+  test_runner.clear_test_db()
+  
+  -- Initialize database tables
+  User.init_db()
+  Session.init_db()
   
   -- Create test user
   local test_user_data = {
@@ -77,9 +83,7 @@ end
 
 function AuthRoutesTest.teardown()
   -- Clean up test data
-  local db = require("src.config.database")
-  db.execute("DELETE FROM sessions")
-  db.execute("DELETE FROM users")
+  test_runner.clear_test_db()
 end
 
 function AuthRoutesTest.test_auth_login_route()
