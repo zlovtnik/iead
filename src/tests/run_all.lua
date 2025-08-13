@@ -8,6 +8,7 @@ local member_tests = require("src.tests.test_member")
 local user_tests = require("src.tests.test_user")
 local security_tests = require("src.tests.test_security")
 local auth_middleware_tests = require("src.tests.test_auth_middleware")
+local auth_controller_tests = require("src.tests.test_auth_controller")
 local auth_integration_tests = require("src.tests.test_auth_integration")
 
 -- Setup test database
@@ -20,6 +21,7 @@ test_runner.run_suite("Member Model Tests", member_tests)
 test_runner.run_suite("User Model Tests", user_tests)
 test_runner.run_suite("Security Utils Tests", security_tests)
 test_runner.run_suite("Authentication Middleware Tests", auth_middleware_tests)
+test_runner.run_suite("Authentication Controller Tests", auth_controller_tests)
 test_runner.run_suite("Authentication Integration Tests", auth_integration_tests)
 
 -- Print final results
