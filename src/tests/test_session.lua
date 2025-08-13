@@ -357,9 +357,19 @@ local function test_get_statistics()
   setup_test_db()
   local user = create_test_user()
   
-  -- Create sessions with different states
+  -- Create an active session
   local active_session = Session.create(user.id, 3600) -- Active
-  local expired_session = Session.create(user.id, -3600) -- Expired
+  
+  -- Manually insert an expired session into database
+  local conn, env = Session.get_connection()
+  local expired_token = security.generate_secure_token()
+  local expired_time = os.date("%Y-%m-%d %H:%M:%S", os.time() - 3600) -- 1 hour ago
+  conn:execute(string.format(
+    "INSERT INTO sessions (user_id, token, expires_at) VALUES (%d, '%s', '%s')",
+    tonumber(user.id), expired_token, expired_time
+  ))
+  conn:close()
+  env:close()
   
   -- Test getting statistics
   local stats = Session.get_statistics()

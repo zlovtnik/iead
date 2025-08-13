@@ -81,9 +81,9 @@ function Session.create(user_id, duration)
   -- Generate secure token
   local token = security.generate_secure_token()
   
-  -- Calculate expiration time
+  -- Calculate expiration time using UTC to match SQLite's CURRENT_TIMESTAMP
   local expires_at = os.time() + duration
-  local expires_at_str = os.date("%Y-%m-%d %H:%M:%S", expires_at)
+  local expires_at_str = os.date("!%Y-%m-%d %H:%M:%S", expires_at)
   
   -- Insert new session
   local success, err = pcall(function()
@@ -122,34 +122,36 @@ function Session.find_by_token(token)
   
   local conn, env = Session.get_connection()
   
-  -- Find session with user info
+  -- Find session with user info, only if not expired
   local cursor = conn:execute(string.format([[
     SELECT s.*, u.username, u.email, u.role, u.member_id, u.is_active 
     FROM sessions s 
     JOIN users u ON s.user_id = u.id 
-    WHERE s.token = '%s'
+    WHERE s.token = '%s' AND s.expires_at > CURRENT_TIMESTAMP
   ]], security.sanitize_input(token)))
   
   local session = cursor:fetch({}, "a")
   cursor:close()
   
   if not session then
-    conn:close()
-    env:close()
-    return nil, "Invalid token"
-  end
-  
-  -- Check if session has expired
-  local expires_at = session.expires_at
-  local current_time = os.date("%Y-%m-%d %H:%M:%S")
-  
-  if expires_at < current_time then
-    -- Clean up expired session
-    conn:execute(string.format("DELETE FROM sessions WHERE token = '%s'", 
+    -- Check if session exists but is expired
+    cursor = conn:execute(string.format("SELECT id FROM sessions WHERE token = '%s'", 
       security.sanitize_input(token)))
-    conn:close()
-    env:close()
-    return nil, "Session expired"
+    local expired_session = cursor:fetch()
+    cursor:close()
+    
+    if expired_session then
+      -- Clean up expired session
+      conn:execute(string.format("DELETE FROM sessions WHERE token = '%s'", 
+        security.sanitize_input(token)))
+      conn:close()
+      env:close()
+      return nil, "Session expired"
+    else
+      conn:close()
+      env:close()
+      return nil, "Invalid token"
+    end
   end
   
   -- Check if user is still active
@@ -203,9 +205,9 @@ function Session.refresh(token, duration)
     return nil, "Invalid token"
   end
   
-  -- Calculate new expiration time
+  -- Calculate new expiration time using UTC to match SQLite's CURRENT_TIMESTAMP
   local expires_at = os.time() + duration
-  local expires_at_str = os.date("%Y-%m-%d %H:%M:%S", expires_at)
+  local expires_at_str = os.date("!%Y-%m-%d %H:%M:%S", expires_at)
   
   -- Update session expiration and last accessed time
   conn:execute(string.format(
