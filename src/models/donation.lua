@@ -205,4 +205,22 @@ function Donation.delete(id)
   return true
 end
 
+-- Calculate total donations by member
+function Donation.total_by_member(member_id)
+  local conn, env = Donation.get_connection()
+  local cursor = conn:execute(string.format(
+    "SELECT COALESCE(SUM(amount), 0) as total FROM donations WHERE member_id = %d",
+    member_id
+  ))
+  
+  local row = cursor:fetch({}, "a")
+  local total = row and row.total or 0
+  
+  cursor:close()
+  conn:close()
+  env:close()
+  
+  return total
+end
+
 return Donation
