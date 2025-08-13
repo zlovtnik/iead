@@ -24,6 +24,7 @@ COPY . .
 RUN luarocks install luasql-sqlite3
 RUN luarocks install lua-cjson
 RUN luarocks install luasocket
+RUN luarocks install redis-lua || echo "Redis client installation failed - using memory fallback"
 
 # Make scripts executable
 RUN chmod +x start.sh

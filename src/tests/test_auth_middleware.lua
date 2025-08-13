@@ -4,6 +4,7 @@
 local auth = require("src.middleware.auth")
 local Session = require("src.models.session")
 local User = require("src.models.user")
+local Member = require("src.models.member")
 local json_utils = require("src.utils.json")
 
 -- Test framework setup
@@ -14,6 +15,7 @@ local tests = {}
 local function setup()
   test_runner.clear_test_db()
   -- Initialize required tables
+  Member.init_db()
   User.init_db()
   Session.init_db()
 end
@@ -180,117 +182,147 @@ end
 function tests.test_require_role_admin()
   mock_json_response()
   
+  -- Setup a real authenticated session for testing
+  setup()  -- Initialize DB
+  
   -- Test with admin user
   local admin_middleware = auth.require_role("Admin")
-  local client = create_mock_client({})
-  local params = {
-    current_user = {
-      id = 1,
-      username = "admin",
-      role = "Admin"
-    }
-  }
   
-  -- Mock authenticate_request to return true
-  local original_auth = auth.authenticate_request
-  auth.authenticate_request = function(client, params)
-    return true
-  end
+  local admin_user = User.create({
+    username = "admin_test",
+    email = "admin@test.com", 
+    password = "TestPass123",
+    role = "Admin"
+  })
+  local admin_session = Session.create(admin_user.id)
+  local admin_client = create_mock_client({ Authorization = "Bearer " .. admin_session.token })
+  local admin_params = {}
   
-  local result = admin_middleware(client, params)
+  local result = admin_middleware(admin_client, admin_params)
   assert(result == true, "Admin should have access to admin-required endpoint")
   
   -- Test with pastor user
-  params.current_user.role = "Pastor"
-  client = create_mock_client({})
+  local pastor_user = User.create({
+    username = "pastor_test",
+    email = "pastor@test.com", 
+    password = "TestPass123",
+    role = "Pastor"
+  })
+  local pastor_session = Session.create(pastor_user.id)
+  local pastor_client = create_mock_client({ Authorization = "Bearer " .. pastor_session.token })
+  local pastor_params = {}
   
-  result = admin_middleware(client, params)
+  result = admin_middleware(pastor_client, pastor_params)
   assert(result == false, "Pastor should not have access to admin-required endpoint")
-  assert(client.response_status == 403, "Should return 403 for insufficient permissions")
+  assert(pastor_client.response_status == 403, "Should return 403 for insufficient permissions")
   
-  -- Restore original function
-  auth.authenticate_request = original_auth
   restore_json_response()
 end
 
 function tests.test_require_role_pastor()
   mock_json_response()
   
+  -- Setup a real authenticated session for testing
+  setup()  -- Initialize DB
+  
   local pastor_middleware = auth.require_role("Pastor")
   
-  -- Mock authenticate_request to return true
-  local original_auth = auth.authenticate_request
-  auth.authenticate_request = function(client, params)
-    return true
-  end
-  
   -- Test with pastor user
-  local client = create_mock_client({})
-  local params = {
-    current_user = {
-      id = 2,
-      username = "pastor",
-      role = "Pastor"
-    }
-  }
+  local pastor_user = User.create({
+    username = "pastor_test",
+    email = "pastor@test.com", 
+    password = "TestPass123",
+    role = "Pastor"
+  })
+  local pastor_session = Session.create(pastor_user.id)
+  local pastor_client = create_mock_client({ Authorization = "Bearer " .. pastor_session.token })
+  local pastor_params = {}
   
-  local result = pastor_middleware(client, params)
+  local result = pastor_middleware(pastor_client, pastor_params)
   assert(result == true, "Pastor should have access to pastor-required endpoint")
   
   -- Test with admin user (should also have access due to hierarchy)
-  params.current_user.role = "Admin"
-  result = pastor_middleware(client, params)
+  local admin_user = User.create({
+    username = "admin_test2",
+    email = "admin2@test.com", 
+    password = "TestPass123",
+    role = "Admin"
+  })
+  local admin_session = Session.create(admin_user.id)
+  local admin_client = create_mock_client({ Authorization = "Bearer " .. admin_session.token })
+  local admin_params = {}
+  
+  result = pastor_middleware(admin_client, admin_params)
   assert(result == true, "Admin should have access to pastor-required endpoint")
   
   -- Test with member user
-  params.current_user.role = "Member"
-  client = create_mock_client({})
+  local member_user = User.create({
+    username = "member_test",
+    email = "member@test.com", 
+    password = "TestPass123",
+    role = "Member"
+  })
+  local member_session = Session.create(member_user.id)
+  local member_client = create_mock_client({ Authorization = "Bearer " .. member_session.token })
+  local member_params = {}
   
-  result = pastor_middleware(client, params)
+  result = pastor_middleware(member_client, member_params)
   assert(result == false, "Member should not have access to pastor-required endpoint")
-  assert(client.response_status == 403, "Should return 403 for insufficient permissions")
+  assert(member_client.response_status == 403, "Should return 403 for insufficient permissions")
   
-  -- Restore original function
-  auth.authenticate_request = original_auth
   restore_json_response()
 end
 
 function tests.test_require_role_member()
   mock_json_response()
   
+  -- Setup a real authenticated session for testing
+  setup()  -- Initialize DB
+  
   local member_middleware = auth.require_role("Member")
   
-  -- Mock authenticate_request to return true
-  local original_auth = auth.authenticate_request
-  auth.authenticate_request = function(client, params)
-    return true
-  end
-  
   -- Test with member user
-  local client = create_mock_client({})
-  local params = {
-    current_user = {
-      id = 3,
-      username = "member",
-      role = "Member"
-    }
-  }
+  local member_user = User.create({
+    username = "member_test",
+    email = "member@test.com", 
+    password = "TestPass123",
+    role = "Member"
+  })
+  local member_session = Session.create(member_user.id)
+  local member_client = create_mock_client({ Authorization = "Bearer " .. member_session.token })
+  local member_params = {}
   
-  local result = member_middleware(client, params)
+  local result = member_middleware(member_client, member_params)
   assert(result == true, "Member should have access to member-required endpoint")
   
   -- Test with pastor user (should also have access due to hierarchy)
-  params.current_user.role = "Pastor"
-  result = member_middleware(client, params)
+  local pastor_user = User.create({
+    username = "pastor_test2",
+    email = "pastor2@test.com", 
+    password = "TestPass123",
+    role = "Pastor"
+  })
+  local pastor_session = Session.create(pastor_user.id)
+  local pastor_client = create_mock_client({ Authorization = "Bearer " .. pastor_session.token })
+  local pastor_params = {}
+  
+  result = member_middleware(pastor_client, pastor_params)
   assert(result == true, "Pastor should have access to member-required endpoint")
   
   -- Test with admin user (should also have access due to hierarchy)
-  params.current_user.role = "Admin"
-  result = member_middleware(client, params)
+  local admin_user = User.create({
+    username = "admin_test3",
+    email = "admin3@test.com", 
+    password = "TestPass123",
+    role = "Admin"
+  })
+  local admin_session = Session.create(admin_user.id)
+  local admin_client = create_mock_client({ Authorization = "Bearer " .. admin_session.token })
+  local admin_params = {}
+  
+  result = member_middleware(admin_client, admin_params)
   assert(result == true, "Admin should have access to member-required endpoint")
   
-  -- Restore original function
-  auth.authenticate_request = original_auth
   restore_json_response()
 end
 
@@ -352,83 +384,103 @@ end
 function tests.test_require_member_access_success()
   mock_json_response()
   
+  -- Setup a real authenticated session for testing
+  setup()  -- Initialize DB
+  
   local member_access_middleware = auth.require_member_access()
   
-  -- Mock authenticate_request to return true
-  local original_auth = auth.authenticate_request
-  auth.authenticate_request = function(client, params)
-    params.current_user = {
-      id = 1,
-      role = "Admin",
-      member_id = nil
-    }
-    return true
-  end
+  -- Create a member first
+  local test_member = Member.create({
+    name = "Test Member",
+    email = "member@test.com",
+    phone = "123-456-7890"
+  })
   
-  local client = create_mock_client({})
-  local params = { member_id = "123" }
+  local admin_user = User.create({
+    username = "admin_member_test",
+    email = "admin_member@test.com", 
+    password = "TestPass123",
+    role = "Admin"
+  })
+  local admin_session = Session.create(admin_user.id)
+  local admin_client = create_mock_client({ Authorization = "Bearer " .. admin_session.token })
+  local admin_params = { member_id = tostring(test_member.id) }
   
-  local result = member_access_middleware(client, params)
+  local result = member_access_middleware(admin_client, admin_params)
   assert(result == true, "Should allow access for admin user")
   
-  -- Restore original function
-  auth.authenticate_request = original_auth
   restore_json_response()
 end
 
 function tests.test_require_member_access_denied()
   mock_json_response()
   
+  -- Setup a real authenticated session for testing
+  setup()  -- Initialize DB
+  
   local member_access_middleware = auth.require_member_access()
   
-  -- Mock authenticate_request to return true
-  local original_auth = auth.authenticate_request
-  auth.authenticate_request = function(client, params)
-    params.current_user = {
-      id = 3,
-      role = "Member",
-      member_id = 456
-    }
-    return true
-  end
+  -- Create two members
+  local member1 = Member.create({
+    name = "Test Member 1",
+    email = "member1@test.com",
+    phone = "123-456-7890"
+  })
   
-  local client = create_mock_client({})
-  local params = { member_id = "123" }
+  local member2 = Member.create({
+    name = "Test Member 2",
+    email = "member2@test.com",
+    phone = "123-456-7891"
+  })
   
-  local result = member_access_middleware(client, params)
+  -- Create a member user associated with member2, but trying to access member1's data
+  local member_user = User.create({
+    username = "member_test_access",
+    email = "member_access@test.com", 
+    password = "TestPass123",
+    role = "Member",
+    member_id = member2.id
+  })
+  local member_session = Session.create(member_user.id)
+  local member_client = create_mock_client({ Authorization = "Bearer " .. member_session.token })
+  local member_params = { member_id = tostring(member1.id) }
+  
+  local result = member_access_middleware(member_client, member_params)
   assert(result == false, "Should deny access for member accessing other's data")
-  assert(client.response_status == 403, "Should return 403 for access denied")
+  assert(member_client.response_status == 403, "Should return 403 for access denied")
   
-  -- Restore original function
-  auth.authenticate_request = original_auth
   restore_json_response()
 end
 
 function tests.test_require_member_access_url_capture()
   mock_json_response()
   
+  -- Setup a real authenticated session for testing
+  setup()  -- Initialize DB
+  
   local member_access_middleware = auth.require_member_access()
   
-  -- Mock authenticate_request to return true
-  local original_auth = auth.authenticate_request
-  auth.authenticate_request = function(client, params)
-    params.current_user = {
-      id = 1,
-      role = "Pastor",
-      member_id = nil
-    }
-    return true
-  end
+  -- Create a member for testing
+  local test_member = Member.create({
+    name = "Test Member URL",
+    email = "member_url@test.com",
+    phone = "123-456-7892"
+  })
   
-  local client = create_mock_client({})
-  local params = {}
+  local pastor_user = User.create({
+    username = "pastor_url_test",
+    email = "pastor_url@test.com", 
+    password = "TestPass123",
+    role = "Pastor"
+  })
+  local pastor_session = Session.create(pastor_user.id)
+  local pastor_client = create_mock_client({ Authorization = "Bearer " .. pastor_session.token })
+  local pastor_params = {}
   
   -- Test with URL capture (member ID from URL pattern)
-  local result = member_access_middleware(client, params, "123")
+  local result = member_access_middleware(pastor_client, pastor_params, tostring(test_member.id))
   assert(result == true, "Should allow access using URL capture for member ID")
   
-  -- Restore original function
-  auth.authenticate_request = original_auth
   restore_json_response()
 end
 

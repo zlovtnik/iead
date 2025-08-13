@@ -10,6 +10,8 @@ local DonationController = require("src.controllers.donation_controller")
 local VolunteerController = require("src.controllers.volunteer_controller")
 local ReportController = require("src.controllers.report_controller")
 local TitheController = require("src.controllers.tithe_controller")
+local AuthController = require("src.controllers.auth_controller")
+local UserController = require("src.controllers.user_controller")
 local json_utils = require("src.utils.json")
 local views = require("src.views.home")
 
@@ -147,6 +149,51 @@ router.register("/", {
 })
 
 -- Resource routes
+
+-- Authentication routes
+router.register("/auth/login", {
+  POST = AuthController.login
+})
+
+router.register("/auth/logout", {
+  POST = AuthController.logout
+})
+
+router.register("/auth/refresh", {
+  POST = AuthController.refresh_token
+})
+
+router.register("/auth/me", {
+  GET = AuthController.get_current_user
+})
+
+router.register("/auth/password", {
+  PUT = AuthController.change_password
+})
+
+-- User management routes (Admin only)
+router.register("/users", {
+  GET = UserController.list_users,
+  POST = UserController.create_user
+})
+
+router.register("^/users/(%d+)$", {
+  GET = UserController.get_user,
+  PUT = UserController.update_user,
+  DELETE = UserController.deactivate_user
+})
+
+router.register("^/users/(%d+)/activate$", {
+  POST = UserController.activate_user
+})
+
+router.register("^/users/(%d+)/reset-password$", {
+  POST = UserController.reset_password
+})
+
+router.register("^/users/(%d+)/change-role$", {
+  POST = UserController.change_role
+})
 
 -- Members
 router.register("/members", {

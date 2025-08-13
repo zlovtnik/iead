@@ -165,4 +165,55 @@ function security.validate_username_format(username)
     return true, nil
 end
 
+-- Generate a secure temporary password
+-- @param length number Optional length of password (default: 12)
+-- @return string Generated secure password
+function security.generate_secure_password(length)
+    length = length or 12
+    
+    -- Character sets for password generation
+    local lowercase = "abcdefghijklmnopqrstuvwxyz"
+    local uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    local digits = "0123456789"
+    local special = "!@#$%^&*"
+    
+    -- Ensure password meets policy requirements
+    local password = {}
+    
+    -- Add at least one character from each required set
+    if REQUIRE_LOWERCASE then
+        password[#password + 1] = lowercase:sub(math.random(1, #lowercase), math.random(1, #lowercase))
+    end
+    
+    if REQUIRE_UPPERCASE then
+        password[#password + 1] = uppercase:sub(math.random(1, #uppercase), math.random(1, #uppercase))
+    end
+    
+    if REQUIRE_DIGIT then
+        password[#password + 1] = digits:sub(math.random(1, #digits), math.random(1, #digits))
+    end
+    
+    if REQUIRE_SPECIAL then
+        password[#password + 1] = special:sub(math.random(1, #special), math.random(1, #special))
+    end
+    
+    -- Fill remaining length with random characters from all sets
+    local all_chars = lowercase .. uppercase .. digits
+    if REQUIRE_SPECIAL then
+        all_chars = all_chars .. special
+    end
+    
+    for i = #password + 1, length do
+        password[i] = all_chars:sub(math.random(1, #all_chars), math.random(1, #all_chars))
+    end
+    
+    -- Shuffle the password array to randomize character positions
+    for i = #password, 2, -1 do
+        local j = math.random(1, i)
+        password[i], password[j] = password[j], password[i]
+    end
+    
+    return table.concat(password)
+end
+
 return security

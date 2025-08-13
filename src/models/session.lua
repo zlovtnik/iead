@@ -4,6 +4,7 @@
 local luasql = require("luasql.sqlite3")
 local db_config = require("src.config.database")
 local security = require("src.utils.security")
+local validation = require("src.utils.validation")
 
 local Session = {}
 
@@ -154,8 +155,8 @@ function Session.find_by_token(token)
     end
   end
   
-  -- Check if user is still active
-  if session.is_active == "0" or session.is_active == 0 or session.is_active == false then
+  -- Check if user is still active using normalized boolean check
+  if not validation.normalize_boolean(session.is_active) then
     -- Clean up session for inactive user
     conn:execute(string.format("DELETE FROM sessions WHERE token = '%s'", 
       security.sanitize_input(token)))

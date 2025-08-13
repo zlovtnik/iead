@@ -3,6 +3,29 @@
 
 local validation = {}
 
+-- Normalize boolean values from various formats (string, number, boolean)
+-- @param value any The value to normalize
+-- @return boolean The normalized boolean value
+function validation.normalize_boolean(value)
+    -- Handle nil
+    if value == nil then
+        return false
+    end
+    
+    -- Handle string values
+    if type(value) == "string" then
+        return value:lower() == "true" or value == "1"
+    end
+    
+    -- Handle numbers (0 = false, non-zero = true)
+    if type(value) == "number" then
+        return value ~= 0
+    end
+    
+    -- Handle booleans directly
+    return value == true
+end
+
 -- Validate email format
 function validation.is_valid_email(email)
   if not email or type(email) ~= "string" then
