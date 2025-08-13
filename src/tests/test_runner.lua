@@ -139,11 +139,12 @@ function test_runner.clear_test_db()
   local env = luasql.sqlite3()
   local conn = env:connect(db_config.db_file)
   
-  -- Clear all tables
+  -- Clear all tables (order matters due to foreign key constraints)
   conn:execute("DELETE FROM attendance")
   conn:execute("DELETE FROM donations")
   conn:execute("DELETE FROM volunteers")
   conn:execute("DELETE FROM tithes")
+  conn:execute("DELETE FROM users")  -- Clear users before members due to foreign key
   conn:execute("DELETE FROM events")
   conn:execute("DELETE FROM members")
   

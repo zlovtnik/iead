@@ -2,6 +2,7 @@
 -- Database schema for Church Management System
 
 local Member = require("src.models.member")
+local User = require("src.models.user")
 local Event = require("src.models.event")
 local Attendance = require("src.models.attendance")
 local Donation = require("src.models.donation")
@@ -14,6 +15,7 @@ local schema = {}
 function schema.init()
   -- Initialize tables in the correct order (respecting foreign key constraints)
   Member.init_db()
+  User.init_db()  -- Users table depends on members table
   Event.init_db()
   Attendance.init_db()
   Donation.init_db()
