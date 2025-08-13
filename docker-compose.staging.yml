@@ -1,10 +1,28 @@
 version: '3.8'
 
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: church-management-redis-staging
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-staging-data:/data
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
   church-management:
     image: ghcr.io/${GITHUB_REPOSITORY}:develop
     container_name: church-management-staging
     restart: unless-stopped
+    depends_on:
+      - redis
     ports:
       - "8081:8080"
     environment:
@@ -12,6 +30,9 @@ services:
       - PORT=8080
       - HOST=0.0.0.0
       - DB_PATH=/data/church_management.db
+      - REDIS_ENABLED=true
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     volumes:
       - church-management-data:/data
     healthcheck:
@@ -24,3 +45,5 @@ services:
 volumes:
   church-management-data:
     name: church-management-staging-data
+  redis-staging-data:
+    name: church-management-redis-staging-data
