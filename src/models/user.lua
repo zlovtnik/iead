@@ -30,6 +30,27 @@ function User.init_db()
     )
   ]]
   
+  -- Create indexes for performance optimization
+  conn:execute[[
+    CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)
+  ]]
+  
+  conn:execute[[
+    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)
+  ]]
+  
+  conn:execute[[
+    CREATE INDEX IF NOT EXISTS idx_users_member_id ON users(member_id)
+  ]]
+  
+  conn:execute[[
+    CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)
+  ]]
+  
+  conn:execute[[
+    CREATE INDEX IF NOT EXISTS idx_users_is_active ON users(is_active)
+  ]]
+  
   conn:close()
   env:close()
   
