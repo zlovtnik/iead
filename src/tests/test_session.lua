@@ -257,7 +257,7 @@ local function test_cleanup_expired()
   -- Manually insert an expired session into database to test cleanup
   local conn, env = Session.get_connection()
   local expired_token = security.generate_secure_token()
-  local expired_time = os.date("%Y-%m-%d %H:%M:%S", os.time() - 3600) -- 1 hour ago
+  local expired_time = os.date("!%Y-%m-%d %H:%M:%S", os.time() - 3600) -- 1 hour ago UTC
   conn:execute(string.format(
     "INSERT INTO sessions (user_id, token, expires_at) VALUES (%d, '%s', '%s')",
     tonumber(user.id), expired_token, expired_time
@@ -363,7 +363,7 @@ local function test_get_statistics()
   -- Manually insert an expired session into database
   local conn, env = Session.get_connection()
   local expired_token = security.generate_secure_token()
-  local expired_time = os.date("%Y-%m-%d %H:%M:%S", os.time() - 3600) -- 1 hour ago
+  local expired_time = os.date("!%Y-%m-%d %H:%M:%S", os.time() - 3600) -- 1 hour ago UTC
   conn:execute(string.format(
     "INSERT INTO sessions (user_id, token, expires_at) VALUES (%d, '%s', '%s')",
     tonumber(user.id), expired_token, expired_time
