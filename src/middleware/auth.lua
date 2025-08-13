@@ -54,9 +54,9 @@ function auth.extract_token(client)
   return token
 end
 
--- Check rate limiting for authentication attempts
--- @param identifier string The identifier to check (username, IP, etc.)
--- @return boolean True if request is allowed, false if rate limited
+-- Check rate limiting before processing authentication attempts
+-- @param identifier string The identifier to check (IP address, username, etc.)
+-- @return boolean true if allowed, false if rate limited
 function auth.rate_limit_check(identifier)
   if not identifier then
     return false
