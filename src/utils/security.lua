@@ -2,7 +2,6 @@
 -- Provides password hashing, token generation, and security validation
 
 local bcrypt = require('bcrypt')
-local random = require('resty.random')
 
 local security = {}
 
@@ -43,32 +42,23 @@ function security.verify_password(password, hash)
         return false
     end
     
-    return bcrypt.verify(password, hash)
+    local success, result = pcall(bcrypt.verify, password, hash)
+    return success and result
 end
 
 -- Generate a cryptographically secure random token
--- @return string Base64 encoded random token
+-- @return string Hex encoded random token
 function security.generate_secure_token()
-    local bytes = random.bytes(TOKEN_LENGTH)
-    if not bytes then
-        error("Failed to generate secure random bytes")
-    end
+    -- Seed random number generator with current time and process info
+    math.randomseed(os.time() + (os.clock() * 1000000))
     
-    -- Convert bytes to base64 for safe HTTP transmission
-    local base64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    local chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
     local result = {}
     
-    for i = 1, #bytes, 3 do
-        local b1, b2, b3 = string.byte(bytes, i, i + 2)
-        b2 = b2 or 0
-        b3 = b3 or 0
-        
-        local bitmap = (b1 << 16) | (b2 << 8) | b3
-        
-        result[#result + 1] = base64_chars:sub((bitmap >> 18) + 1, (bitmap >> 18) + 1)
-        result[#result + 1] = base64_chars:sub(((bitmap >> 12) & 63) + 1, ((bitmap >> 12) & 63) + 1)
-        result[#result + 1] = i + 1 <= #bytes and base64_chars:sub(((bitmap >> 6) & 63) + 1, ((bitmap >> 6) & 63) + 1) or "="
-        result[#result + 1] = i + 2 <= #bytes and base64_chars:sub((bitmap & 63) + 1, (bitmap & 63) + 1) or "="
+    -- Generate a token that's twice the TOKEN_LENGTH for better entropy
+    for i = 1, TOKEN_LENGTH * 2 do
+        local rand_index = math.random(1, #chars)
+        result[#result + 1] = chars:sub(rand_index, rand_index)
     end
     
     return table.concat(result)
@@ -115,10 +105,11 @@ function security.sanitize_input(input)
     end
     
     -- Remove or escape potentially dangerous characters
-    local sanitized = input:gsub("'", "''")  -- Escape single quotes for SQL
+    -- Order matters: escape ampersands first to avoid double-escaping
+    local sanitized = input:gsub("&", "&amp;")
+    sanitized = sanitized:gsub("'", "''")  -- Escape single quotes for SQL
     sanitized = sanitized:gsub("<", "&lt;")   -- Escape HTML tags
     sanitized = sanitized:gsub(">", "&gt;")
-    sanitized = sanitized:gsub("&", "&amp;")
     sanitized = sanitized:gsub('"', "&quot;")
     
     -- Trim whitespace

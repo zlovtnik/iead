@@ -19,8 +19,7 @@ dependencies = {
    "luasql-sqlite3",
    "lua-cjson",
    "luasocket",
-   "bcrypt",
-   "lua-resty-random"
+   "bcrypt"
 }
 build = {
    type = "builtin",
