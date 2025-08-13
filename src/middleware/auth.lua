@@ -15,6 +15,7 @@ local rate_limit_store = {}
 -- Rate limiting configuration
 local RATE_LIMIT_MAX_ATTEMPTS = 5
 local RATE_LIMIT_WINDOW = 15 * 60 -- 15 minutes in seconds
+local RATE_LIMIT_COMPACTION_THRESHOLD = 256 -- Compact when head exceeds this value
 
 -- Role hierarchy for permission checking
 local ROLE_HIERARCHY = {
@@ -49,9 +50,9 @@ function auth.extract_token(client)
   return token
 end
 
--- Check rate limiting for authentication attempts
--- @param identifier string The identifier to check (username, IP, etc.)
--- @return boolean True if request is allowed, false if rate limited
+-- Check rate limiting before processing authentication attempts
+-- @param identifier string The identifier to check (IP address, username, etc.)
+-- @return boolean true if allowed, false if rate limited
 function auth.rate_limit_check(identifier)
   if not identifier then
     return false
@@ -59,30 +60,38 @@ function auth.rate_limit_check(identifier)
   
   local current_time = os.time()
   local key = "auth_attempts:" .. identifier
-  
-  -- Clean up old entries
-  if rate_limit_store[key] then
-    local attempts = rate_limit_store[key]
-    local filtered_attempts = {}
-    
-    for _, attempt_time in ipairs(attempts) do
-      if current_time - attempt_time < RATE_LIMIT_WINDOW then
-        table.insert(filtered_attempts, attempt_time)
-      end
+
+  -- Initialize or get existing queue
+  local queue = rate_limit_store[key]
+  if not queue then
+    queue = {list = {}, head = 1}
+    rate_limit_store[key] = queue
+  end
+
+  -- Remove expired attempts from the beginning (oldest first)
+  -- This advances the head pointer instead of removing elements
+  while queue.head <= #queue.list and current_time - queue.list[queue.head] >= RATE_LIMIT_WINDOW do
+    queue.head = queue.head + 1
+  end
+
+  -- Perform compaction if head has grown too large to prevent unbounded growth
+  if queue.head > RATE_LIMIT_COMPACTION_THRESHOLD then
+    local new_list = {}
+    for i = queue.head, #queue.list do
+      table.insert(new_list, queue.list[i])
     end
-    
-    rate_limit_store[key] = filtered_attempts
-  else
-    rate_limit_store[key] = {}
+    queue.list = new_list
+    queue.head = 1
   end
   
-  -- Check if rate limit exceeded
-  if #rate_limit_store[key] >= RATE_LIMIT_MAX_ATTEMPTS then
+  -- Check if rate limit exceeded (count active attempts)
+  local active_attempts = #queue.list - queue.head + 1
+  if active_attempts >= RATE_LIMIT_MAX_ATTEMPTS then
     return false
   end
   
-  -- Record this attempt
-  table.insert(rate_limit_store[key], current_time)
+  -- Record this attempt at the end of the list
+  table.insert(queue.list, current_time)
   
   return true
 end
