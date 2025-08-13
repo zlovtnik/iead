@@ -10,6 +10,7 @@ local security_tests = require("src.tests.test_security")
 local auth_middleware_tests = require("src.tests.test_auth_middleware")
 local auth_controller_tests = require("src.tests.test_auth_controller")
 local auth_integration_tests = require("src.tests.test_auth_integration")
+local auth_routes_tests = require("src.tests.test_auth_routes")
 
 -- Setup test database
 local cleanup = test_runner.setup_test_db()
@@ -23,6 +24,7 @@ test_runner.run_suite("Security Utils Tests", security_tests)
 test_runner.run_suite("Authentication Middleware Tests", auth_middleware_tests)
 test_runner.run_suite("Authentication Controller Tests", auth_controller_tests)
 test_runner.run_suite("Authentication Integration Tests", auth_integration_tests)
+test_runner.run_suite("Authentication Routes Tests", auth_routes_tests)
 
 -- Print final results
 test_runner.print_results()
