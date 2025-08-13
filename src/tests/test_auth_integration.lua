@@ -175,13 +175,27 @@ function tests.test_member_data_access_control()
   setup()
   mock_json_response()
   
-  -- Create test users
+  -- First create actual members in the members table
+  local Member = require("src.models.member")
+  Member.init_db()
+  
+  local member_record1 = Member.create({
+    name = "John Doe",
+    email = "john@example.com"
+  })
+  
+  local member_record2 = Member.create({
+    name = "Jane Smith", 
+    email = "jane@example.com"
+  })
+  
+  -- Create test users linked to members
   local member1 = User.create({
     username = "member1",
     email = "member1@example.com",
     password = "SecurePass123",
     role = "Member",
-    member_id = 1
+    member_id = member_record1.id
   })
   
   local member2 = User.create({
@@ -189,7 +203,7 @@ function tests.test_member_data_access_control()
     email = "member2@example.com",
     password = "SecurePass123",
     role = "Member",
-    member_id = 2
+    member_id = member_record2.id
   })
   
   local pastor = User.create({
@@ -198,6 +212,11 @@ function tests.test_member_data_access_control()
     password = "SecurePass123",
     role = "Pastor"
   })
+  
+  -- Verify users were created successfully
+  assert(member1 ~= nil, "Member1 should be created successfully")
+  assert(member2 ~= nil, "Member2 should be created successfully")
+  assert(pastor ~= nil, "Pastor should be created successfully")
   
   -- Create sessions
   local member1_session = Session.create(member1.id)
@@ -220,7 +239,7 @@ function tests.test_member_data_access_control()
     Authorization = "Bearer " .. member1_session.token
   })
   
-  protected_member_handler(member1_client, {}, "1")
+  protected_member_handler(member1_client, {}, tostring(member_record1.id))
   assert(member1_client.response_status == 200, "Member should be able to access their own data")
   
   -- Test member1 accessing member2's data (should fail)
@@ -228,7 +247,7 @@ function tests.test_member_data_access_control()
     Authorization = "Bearer " .. member1_session.token
   })
   
-  protected_member_handler(member1_client, {}, "2")
+  protected_member_handler(member1_client, {}, tostring(member_record2.id))
   assert(member1_client.response_status == 403, "Member should not be able to access other member's data")
   
   -- Test pastor accessing any member data (should succeed)
@@ -236,7 +255,7 @@ function tests.test_member_data_access_control()
     Authorization = "Bearer " .. pastor_session.token
   })
   
-  protected_member_handler(pastor_client, {}, "1")
+  protected_member_handler(pastor_client, {}, tostring(member_record1.id))
   assert(pastor_client.response_status == 200, "Pastor should be able to access any member data")
   
   restore_json_response()
