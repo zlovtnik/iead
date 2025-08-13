@@ -322,7 +322,7 @@ jobs:
         with:
           files: dist/*
           body: |
-            ## Church Management System ${{ fgithub.ref_name }}
+            ## Church Management System ${{ github.ref_name }}
             
             ${{ steps.changelog.outputs.changelog }}
             
