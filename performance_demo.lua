@@ -34,20 +34,25 @@ local events = {}
 
 time_operation("Create 100 members", function()
   for i = 1, 100 do
-    local member = Member.create({
+    local member, err = Member.create({
       name = "Member " .. i,
       email = "member" .. i .. "@church.com",
       phone = string.format("555-01%02d", i),
       salary = math.random(30000, 80000)
     })
-    table.insert(members, member)
+    if member and not err then
+      table.insert(members, member)
+    else
+      print("Error creating member " .. i .. ": " .. (err or "unknown"))
+    end
   end
+  print(string.format("Created %d members", #members))
   return #members
 end)
 
 time_operation("Create 50 events", function()
   for i = 1, 50 do
-    local event = Event.create({
+    local event, err = Event.create({
       title = "Event " .. i,
       description = "Description for event " .. i,
       start_date = string.format("2024-%02d-%02d 10:00:00", 
@@ -55,25 +60,34 @@ time_operation("Create 50 events", function()
                                 math.random(1, 28)),
       location = "Location " .. i
     })
-    table.insert(events, event)
+    if event and not err then
+      table.insert(events, event)
+    else
+      print("Error creating event " .. i .. ": " .. (err or "unknown"))
+    end
   end
+  print(string.format("Created %d events", #events))
   return #events
 end)
 
 -- Create attendance records
 time_operation("Create 500 attendance records", function()
   local count = 0
-  for i = 1, 500 do
-    local member = members[math.random(1, #members)]
-    local event = events[math.random(1, #events)]
-    local statuses = {"present", "absent", "excused"}
-    
-    Attendance.create({
-      event_id = tonumber(member.id) % #events + 1,
-      member_id = tonumber(member.id),
-      status = statuses[math.random(1, #statuses)]
-    })
-    count = count + 1
+  if #members > 0 and #events > 0 then
+    for i = 1, 500 do
+      local member_index = math.random(1, #members)
+      local event_index = math.random(1, #events)
+      local member = members[member_index]
+      local event = events[event_index]
+      local statuses = {"present", "absent", "excused"}
+      
+      Attendance.create({
+        event_id = tonumber(event.id),
+        member_id = tonumber(member.id),
+        status = statuses[math.random(1, #statuses)]
+      })
+      count = count + 1
+    end
   end
   return count
 end)
