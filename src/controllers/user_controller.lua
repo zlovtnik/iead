@@ -7,8 +7,34 @@ local json_utils = require("src.utils.json")
 local security = require("src.utils.security")
 local auth = require("src.middleware.auth")
 local log = require("src.utils.log")
+local validation = require("src.utils.validation")
 
 local UserController = {}
+
+-- Helper function to validate and convert user_id
+local function validate_user_id(user_id, client)
+  if not user_id then
+    json_utils.send_json_response(client, 400, {
+      error = "Missing user ID",
+      code = "MISSING_USER_ID",
+      message = "User ID is required",
+      timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+    })
+    return nil
+  end
+  
+  if not validation.is_positive_integer(user_id) then
+    json_utils.send_json_response(client, 400, {
+      error = "Invalid user ID",
+      code = "INVALID_USER_ID",
+      message = "User ID must be a positive integer",
+      timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+    })
+    return nil
+  end
+  
+  return tonumber(user_id)
+end
 
 -- List all users endpoint (Admin only)
 function UserController.list_users(client, params)
@@ -29,17 +55,12 @@ function UserController.get_user(client, params, user_id)
     return
   end
   
-  if not user_id then
-    json_utils.send_json_response(client, 400, {
-      error = "Missing user ID",
-      code = "MISSING_USER_ID",
-      message = "User ID is required",
-      timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
-    })
+  local numeric_user_id = validate_user_id(user_id, client)
+  if not numeric_user_id then
     return
   end
   
-  local user = User.find_by_id(tonumber(user_id))
+  local user = User.find_by_id(numeric_user_id)
   
   if not user then
     json_utils.send_json_response(client, 404, {
@@ -125,13 +146,8 @@ function UserController.update_user(client, params, user_id)
     return
   end
   
-  if not user_id then
-    json_utils.send_json_response(client, 400, {
-      error = "Missing user ID",
-      code = "MISSING_USER_ID",
-      message = "User ID is required",
-      timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
-    })
+  local numeric_user_id = validate_user_id(user_id, client)
+  if not numeric_user_id then
     return
   end
   
@@ -144,7 +160,7 @@ function UserController.update_user(client, params, user_id)
   if params.is_active ~= nil then update_data.is_active = params.is_active end
   if params.password_reset_required ~= nil then update_data.password_reset_required = params.password_reset_required end
   
-  local user, error_msg = User.update(tonumber(user_id), update_data)
+  local user, error_msg = User.update(numeric_user_id, update_data)
   
   if not user then
     local error_code = "USER_UPDATE_FAILED"
@@ -190,19 +206,14 @@ function UserController.deactivate_user(client, params, user_id)
     return
   end
   
-  if not user_id then
-    json_utils.send_json_response(client, 400, {
-      error = "Missing user ID",
-      code = "MISSING_USER_ID",
-      message = "User ID is required",
-      timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
-    })
+  local numeric_user_id = validate_user_id(user_id, client)
+  if not numeric_user_id then
     return
   end
   
   -- Prevent admin from deactivating themselves
   local current_user = auth.get_current_user(params)
-  if current_user and tonumber(current_user.id) == tonumber(user_id) then
+  if current_user and tonumber(current_user.id) == numeric_user_id then
     json_utils.send_json_response(client, 400, {
       error = "Cannot deactivate own account",
       code = "CANNOT_DEACTIVATE_SELF",
@@ -212,7 +223,7 @@ function UserController.deactivate_user(client, params, user_id)
     return
   end
   
-  local success, error_msg = User.deactivate(tonumber(user_id))
+  local success, error_msg = User.deactivate(numeric_user_id)
   
   if not success then
     local error_code = "USER_DEACTIVATION_FAILED"
@@ -235,7 +246,7 @@ function UserController.deactivate_user(client, params, user_id)
   end
   
   -- Invalidate all sessions for the deactivated user
-  local invalidated_count, sess_err = Session.invalidate_user_sessions(tonumber(user_id))
+  local invalidated_count, sess_err = Session.invalidate_user_sessions(numeric_user_id)
   if sess_err then
     log.error("Failed to invalidate sessions for user:", user_id, sess_err)
     json_utils.send_json_response(client, 500, { error = "Failed to invalidate user sessions" })
@@ -253,17 +264,12 @@ function UserController.activate_user(client, params, user_id)
     return
   end
   
-  if not user_id then
-    json_utils.send_json_response(client, 400, {
-      error = "Missing user ID",
-      code = "MISSING_USER_ID",
-      message = "User ID is required",
-      timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
-    })
+  local numeric_user_id = validate_user_id(user_id, client)
+  if not numeric_user_id then
     return
   end
   
-  local success, error_msg = User.activate(tonumber(user_id))
+  local success, error_msg = User.activate(numeric_user_id)
   
   if not success then
     local error_code = "USER_ACTIVATION_FAILED"
@@ -296,13 +302,8 @@ function UserController.reset_password(client, params, user_id)
     return
   end
   
-  if not user_id then
-    json_utils.send_json_response(client, 400, {
-      error = "Missing user ID",
-      code = "MISSING_USER_ID",
-      message = "User ID is required",
-      timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
-    })
+  local numeric_user_id = validate_user_id(user_id, client)
+  if not numeric_user_id then
     return
   end
   
@@ -316,7 +317,7 @@ function UserController.reset_password(client, params, user_id)
     return
   end
   
-  local success, error_msg = User.update_password(tonumber(user_id), params.new_password)
+  local success, error_msg = User.update_password(numeric_user_id, params.new_password)
   
   if not success then
     local error_code = "PASSWORD_RESET_FAILED"
@@ -342,11 +343,11 @@ function UserController.reset_password(client, params, user_id)
   
   -- Optionally set password_reset_required flag
   if params.require_password_change then
-    User.update(tonumber(user_id), { password_reset_required = true })
+    User.update(numeric_user_id, { password_reset_required = true })
   end
   
   -- Invalidate all sessions for the user to force re-login
-  local invalidated_count, sess_err = Session.invalidate_user_sessions(tonumber(user_id))
+  local invalidated_count, sess_err = Session.invalidate_user_sessions(numeric_user_id)
   if sess_err then
     log.error("Failed to invalidate sessions for user:", user_id, sess_err)
     json_utils.send_json_response(client, 500, { error = "Failed to invalidate user sessions" })
@@ -364,13 +365,8 @@ function UserController.change_role(client, params, user_id)
     return
   end
   
-  if not user_id then
-    json_utils.send_json_response(client, 400, {
-      error = "Missing user ID",
-      code = "MISSING_USER_ID",
-      message = "User ID is required",
-      timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
-    })
+  local numeric_user_id = validate_user_id(user_id, client)
+  if not numeric_user_id then
     return
   end
   
@@ -386,7 +382,7 @@ function UserController.change_role(client, params, user_id)
   
   -- Prevent admin from changing their own role
   local current_user = auth.get_current_user(params)
-  if current_user and tonumber(current_user.id) == tonumber(user_id) then
+  if current_user and tonumber(current_user.id) == numeric_user_id then
     json_utils.send_json_response(client, 400, {
       error = "Cannot change own role",
       code = "CANNOT_CHANGE_OWN_ROLE",
@@ -396,7 +392,7 @@ function UserController.change_role(client, params, user_id)
     return
   end
   
-  local user, error_msg = User.update(tonumber(user_id), { role = params.role })
+  local user, error_msg = User.update(numeric_user_id, { role = params.role })
   
   if not user then
     local error_code = "ROLE_CHANGE_FAILED"
@@ -421,7 +417,7 @@ function UserController.change_role(client, params, user_id)
   end
   
   -- Invalidate all sessions for the user to force re-login with new role
-  local invalidated_count, sess_err = Session.invalidate_user_sessions(tonumber(user_id))
+  local invalidated_count, sess_err = Session.invalidate_user_sessions(numeric_user_id)
   if sess_err then
     log.error("Failed to invalidate sessions for user:", user_id, sess_err)
     json_utils.send_json_response(client, 500, { error = "Failed to invalidate user sessions" })

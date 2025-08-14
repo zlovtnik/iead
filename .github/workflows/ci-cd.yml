@@ -120,9 +120,48 @@ jobs:
           category: 'trivy-fs'
           wait-for-processing: true
 
+  sonarqube:
+    name: SonarQube Analysis
+    needs: [test, security-scan]
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      
+      - name: Download test coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: test-coverage
+          path: coverage/
+        continue-on-error: true  # Coverage might not exist
+      
+      - name: SonarQube Analysis
+        uses: sonarsource/sonarqube-scan-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=zlovtnik_iead
+            -Dsonar.organization=zlovtnik
+            -Dsonar.sources=src,app.lua
+            -Dsonar.tests=src/tests
+            -Dsonar.exclusions=**/node_modules/**,**/vendor/**,**/dist/**,**/build/**
+            -Dsonar.test.exclusions=**/node_modules/**,**/vendor/**,**/dist/**,**/build/**
+            -Dsonar.coverage.exclusions=src/tests/**,scripts/**,bin/**
+      
+      - name: SonarQube Quality Gate check
+        uses: sonarqube-quality-gate-action@master
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        continue-on-error: true
+
   build:
     name: Build Application
-    needs: [test, security-scan]
+    needs: [test, security-scan, sonarqube]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
