@@ -53,8 +53,36 @@ jobs:
         if: steps.check_tests.outputs.tests_exist == 'true'
         run: lua -e "require('src.tests.run_all')"
 
-  build:
+  sonarqube:
+    name: SonarQube Analysis
     needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      
+      - name: SonarQube Scan
+        uses: sonarqube-quality-gate-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          scanMetadataReportFile: target/sonar/report-task.txt
+        continue-on-error: true
+      
+      - name: SonarQube Analysis
+        uses: sonarsource/sonarqube-scan-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=zlovtnik_iead
+            -Dsonar.organization=zlovtnik
+
+  build:
+    needs: [test, sonarqube]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
