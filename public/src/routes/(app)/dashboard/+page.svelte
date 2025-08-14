@@ -1,12 +1,58 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { user } from '$lib/stores/auth.js';
+  import { reportsApi } from '$lib/api/reports.js';
+  import { DonationChart, AttendanceChart, MemberGrowthChart } from '$lib/components/charts/index.js';
+  import { Loading } from '$lib/components/ui/index.js';
+  import type { DashboardMetrics, DonationSummary, AttendanceReport, MemberReport } from '$lib/api/reports.js';
 
-  // Dashboard stats - these would come from API calls in a real implementation
-  let stats = $state({
+  let stats = $state<DashboardMetrics>({
     totalMembers: 0,
+    activeMembers: 0,
     upcomingEvents: 0,
     monthlyDonations: 0,
-    activeVolunteers: 0
+    monthlyTithes: 0,
+    activeVolunteers: 0,
+    averageAttendance: 0
+  });
+
+  let donationData = $state<DonationSummary | null>(null);
+  let attendanceData = $state<AttendanceReport[]>([]);
+  let memberData = $state<MemberReport | null>(null);
+  let isLoading = $state(true);
+  let error = $state<string | null>(null);
+
+  onMount(async () => {
+    try {
+      // Load dashboard data in parallel
+      const [metricsResult, donationsResult, attendanceResult, membersResult] = await Promise.allSettled([
+        reportsApi.getDashboardMetrics(),
+        reportsApi.getDonationSummary({ limit: 12 }), // Last 12 months
+        reportsApi.getAttendanceReport({ limit: 10 }), // Last 10 events
+        reportsApi.getMemberReport({ limit: 12 }) // Last 12 months
+      ]);
+
+      if (metricsResult.status === 'fulfilled') {
+        stats = metricsResult.value;
+      }
+
+      if (donationsResult.status === 'fulfilled') {
+        donationData = donationsResult.value;
+      }
+
+      if (attendanceResult.status === 'fulfilled') {
+        attendanceData = attendanceResult.value;
+      }
+
+      if (membersResult.status === 'fulfilled') {
+        memberData = membersResult.value;
+      }
+
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'Failed to load dashboard data';
+    } finally {
+      isLoading = false;
+    }
   });
 </script>
 
@@ -25,108 +71,172 @@
     </p>
   </div>
 
-  <!-- Stats grid -->
-  <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-    <!-- Total Members -->
-    <div class="bg-white overflow-hidden shadow-sm rounded-lg">
-      <div class="p-5">
-        <div class="flex items-center">
-          <div class="flex-shrink-0">
-            <div class="w-8 h-8 bg-primary-500 rounded-md flex items-center justify-center">
-              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-              </svg>
+  {#if isLoading}
+    <div class="flex justify-center items-center py-12">
+      <Loading />
+    </div>
+  {:else if error}
+    <div class="bg-red-50 border border-red-200 rounded-md p-4">
+      <div class="flex">
+        <div class="flex-shrink-0">
+          <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+          </svg>
+        </div>
+        <div class="ml-3">
+          <h3 class="text-sm font-medium text-red-800">Error loading dashboard</h3>
+          <p class="mt-1 text-sm text-red-700">{error}</p>
+        </div>
+      </div>
+    </div>
+  {:else}
+    <!-- Stats grid -->
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <!-- Total Members -->
+      <div class="bg-white overflow-hidden shadow-sm rounded-lg">
+        <div class="p-5">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <div class="w-8 h-8 bg-primary-500 rounded-md flex items-center justify-center">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                </svg>
+              </div>
+            </div>
+            <div class="ml-5 w-0 flex-1">
+              <dl>
+                <dt class="text-sm font-medium text-secondary-500 truncate">
+                  Total Members
+                </dt>
+                <dd class="text-lg font-medium text-secondary-900">
+                  {stats.totalMembers.toLocaleString()}
+                </dd>
+                <dd class="text-xs text-secondary-500">
+                  {stats.activeMembers} active
+                </dd>
+              </dl>
             </div>
           </div>
-          <div class="ml-5 w-0 flex-1">
-            <dl>
-              <dt class="text-sm font-medium text-secondary-500 truncate">
-                Total Members
-              </dt>
-              <dd class="text-lg font-medium text-secondary-900">
-                {stats.totalMembers}
-              </dd>
-            </dl>
+        </div>
+      </div>
+
+      <!-- Upcoming Events -->
+      <div class="bg-white overflow-hidden shadow-sm rounded-lg">
+        <div class="p-5">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <div class="w-8 h-8 bg-success-500 rounded-md flex items-center justify-center">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+            </div>
+            <div class="ml-5 w-0 flex-1">
+              <dl>
+                <dt class="text-sm font-medium text-secondary-500 truncate">
+                  Upcoming Events
+                </dt>
+                <dd class="text-lg font-medium text-secondary-900">
+                  {stats.upcomingEvents}
+                </dd>
+                <dd class="text-xs text-secondary-500">
+                  Avg. {stats.averageAttendance}% attendance
+                </dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Monthly Donations -->
+      <div class="bg-white overflow-hidden shadow-sm rounded-lg">
+        <div class="p-5">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <div class="w-8 h-8 bg-warning-500 rounded-md flex items-center justify-center">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                </svg>
+              </div>
+            </div>
+            <div class="ml-5 w-0 flex-1">
+              <dl>
+                <dt class="text-sm font-medium text-secondary-500 truncate">
+                  Monthly Donations
+                </dt>
+                <dd class="text-lg font-medium text-secondary-900">
+                  ${stats.monthlyDonations.toLocaleString()}
+                </dd>
+                <dd class="text-xs text-secondary-500">
+                  +${stats.monthlyTithes.toLocaleString()} tithes
+                </dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Volunteers -->
+      <div class="bg-white overflow-hidden shadow-sm rounded-lg">
+        <div class="p-5">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <div class="w-8 h-8 bg-purple-500 rounded-md flex items-center justify-center">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+              </div>
+            </div>
+            <div class="ml-5 w-0 flex-1">
+              <dl>
+                <dt class="text-sm font-medium text-secondary-500 truncate">
+                  Active Volunteers
+                </dt>
+                <dd class="text-lg font-medium text-secondary-900">
+                  {stats.activeVolunteers}
+                </dd>
+              </dl>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Upcoming Events -->
-    <div class="bg-white overflow-hidden shadow-sm rounded-lg">
-      <div class="p-5">
-        <div class="flex items-center">
-          <div class="flex-shrink-0">
-            <div class="w-8 h-8 bg-success-500 rounded-md flex items-center justify-center">
-              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-          </div>
-          <div class="ml-5 w-0 flex-1">
-            <dl>
-              <dt class="text-sm font-medium text-secondary-500 truncate">
-                Upcoming Events
-              </dt>
-              <dd class="text-lg font-medium text-secondary-900">
-                {stats.upcomingEvents}
-              </dd>
-            </dl>
-          </div>
+    <!-- Charts Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Donation Trends -->
+      {#if donationData}
+        <div class="bg-white shadow-sm rounded-lg p-6">
+          <h3 class="text-lg font-medium text-secondary-900 mb-4">Donation Trends</h3>
+          <DonationChart data={donationData} type="monthly" height={300} />
         </div>
-      </div>
+      {/if}
+
+      <!-- Member Growth -->
+      {#if memberData}
+        <div class="bg-white shadow-sm rounded-lg p-6">
+          <h3 class="text-lg font-medium text-secondary-900 mb-4">Member Growth</h3>
+          <MemberGrowthChart data={memberData} height={300} />
+        </div>
+      {/if}
     </div>
 
-    <!-- Monthly Donations -->
-    <div class="bg-white overflow-hidden shadow-sm rounded-lg">
-      <div class="p-5">
-        <div class="flex items-center">
-          <div class="flex-shrink-0">
-            <div class="w-8 h-8 bg-warning-500 rounded-md flex items-center justify-center">
-              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-              </svg>
-            </div>
-          </div>
-          <div class="ml-5 w-0 flex-1">
-            <dl>
-              <dt class="text-sm font-medium text-secondary-500 truncate">
-                Monthly Donations
-              </dt>
-              <dd class="text-lg font-medium text-secondary-900">
-                ${stats.monthlyDonations.toLocaleString()}
-              </dd>
-            </dl>
-          </div>
-        </div>
+    <!-- Attendance Overview -->
+    {#if attendanceData.length > 0}
+      <div class="bg-white shadow-sm rounded-lg p-6">
+        <h3 class="text-lg font-medium text-secondary-900 mb-4">Recent Event Attendance</h3>
+        <AttendanceChart data={attendanceData} height={300} />
       </div>
-    </div>
+    {/if}
 
-    <!-- Active Volunteers -->
-    <div class="bg-white overflow-hidden shadow-sm rounded-lg">
-      <div class="p-5">
-        <div class="flex items-center">
-          <div class="flex-shrink-0">
-            <div class="w-8 h-8 bg-error-500 rounded-md flex items-center justify-center">
-              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
-            </div>
-          </div>
-          <div class="ml-5 w-0 flex-1">
-            <dl>
-              <dt class="text-sm font-medium text-secondary-500 truncate">
-                Active Volunteers
-              </dt>
-              <dd class="text-lg font-medium text-secondary-900">
-                {stats.activeVolunteers}
-              </dd>
-            </dl>
-          </div>
-        </div>
+    <!-- Donation Categories -->
+    {#if donationData}
+      <div class="bg-white shadow-sm rounded-lg p-6">
+        <h3 class="text-lg font-medium text-secondary-900 mb-4">Donations by Category</h3>
+        <DonationChart data={donationData} type="category" height={300} />
       </div>
-    </div>
-  </div>
+    {/if}
+  {/if}
 
   <!-- Quick actions -->
   <div class="bg-white shadow-sm rounded-lg">
