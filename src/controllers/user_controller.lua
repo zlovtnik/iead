@@ -6,6 +6,7 @@ local Session = require("src.models.session")
 local json_utils = require("src.utils.json")
 local security = require("src.utils.security")
 local auth = require("src.middleware.auth")
+local log = require("src.utils.log")
 
 local UserController = {}
 
@@ -234,10 +235,15 @@ function UserController.deactivate_user(client, params, user_id)
   end
   
   -- Invalidate all sessions for the deactivated user
-  Session.invalidate_user_sessions(tonumber(user_id))
-  
+  local invalidated_count, sess_err = Session.invalidate_user_sessions(tonumber(user_id))
+  if sess_err then
+    log.error("Failed to invalidate sessions for user:", user_id, sess_err)
+    json_utils.send_json_response(client, 500, { error = "Failed to invalidate user sessions" })
+    return
+  end
   json_utils.send_json_response(client, 200, {
-    message = "User deactivated successfully"
+    message = "User deactivated successfully",
+    invalidated_sessions = invalidated_count
   })
 end
 
@@ -340,10 +346,15 @@ function UserController.reset_password(client, params, user_id)
   end
   
   -- Invalidate all sessions for the user to force re-login
-  Session.invalidate_user_sessions(tonumber(user_id))
-  
+  local invalidated_count, sess_err = Session.invalidate_user_sessions(tonumber(user_id))
+  if sess_err then
+    log.error("Failed to invalidate sessions for user:", user_id, sess_err)
+    json_utils.send_json_response(client, 500, { error = "Failed to invalidate user sessions" })
+    return
+  end
   json_utils.send_json_response(client, 200, {
-    message = "Password reset successfully"
+    message = "Password reset successfully",
+    invalidated_sessions = invalidated_count
   })
 end
 
@@ -410,11 +421,16 @@ function UserController.change_role(client, params, user_id)
   end
   
   -- Invalidate all sessions for the user to force re-login with new role
-  Session.invalidate_user_sessions(tonumber(user_id))
-  
+  local invalidated_count, sess_err = Session.invalidate_user_sessions(tonumber(user_id))
+  if sess_err then
+    log.error("Failed to invalidate sessions for user:", user_id, sess_err)
+    json_utils.send_json_response(client, 500, { error = "Failed to invalidate user sessions" })
+    return
+  end
   json_utils.send_json_response(client, 200, {
     message = "User role changed successfully",
-    user = user
+    user = user,
+    invalidated_sessions = invalidated_count
   })
 end
 
