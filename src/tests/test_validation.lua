@@ -52,6 +52,42 @@ function tests.test_is_positive_number()
   test_runner.assert_false(validation.is_positive_number("abc"), "Non-number should fail")
 end
 
+function tests.test_is_positive_integer()
+  -- Valid positive integers
+  test_runner.assert_true(validation.is_positive_integer("123"), "Positive integer string should pass")
+  test_runner.assert_true(validation.is_positive_integer(123), "Positive integer number should pass")
+  test_runner.assert_true(validation.is_positive_integer("1"), "Single digit string should pass")
+  test_runner.assert_true(validation.is_positive_integer(1), "Single digit number should pass")
+  
+  -- Invalid: floats and decimals
+  test_runner.assert_false(validation.is_positive_integer("123.45"), "Decimal string should fail")
+  test_runner.assert_false(validation.is_positive_integer(123.45), "Decimal number should fail")
+  test_runner.assert_false(validation.is_positive_integer("123.0"), "Decimal with zero fraction should fail")
+  test_runner.assert_false(validation.is_positive_integer(123.0), "Number with zero fraction should fail")
+  
+  -- Invalid: scientific notation
+  test_runner.assert_false(validation.is_positive_integer("1e2"), "Scientific notation should fail")
+  test_runner.assert_false(validation.is_positive_integer("1E2"), "Uppercase scientific notation should fail")
+  test_runner.assert_false(validation.is_positive_integer("1.23e2"), "Decimal scientific notation should fail")
+  
+  -- Invalid: zero and negatives
+  test_runner.assert_false(validation.is_positive_integer("0"), "Zero string should fail")
+  test_runner.assert_false(validation.is_positive_integer(0), "Zero number should fail")
+  test_runner.assert_false(validation.is_positive_integer("-123"), "Negative string should fail")
+  test_runner.assert_false(validation.is_positive_integer(-123), "Negative number should fail")
+  
+  -- Invalid: non-numeric
+  test_runner.assert_false(validation.is_positive_integer("abc"), "Non-numeric string should fail")
+  test_runner.assert_false(validation.is_positive_integer(""), "Empty string should fail")
+  test_runner.assert_false(validation.is_positive_integer(nil), "Nil should fail")
+  
+  -- Invalid: strings with extra characters
+  test_runner.assert_false(validation.is_positive_integer("123abc"), "String with trailing characters should fail")
+  test_runner.assert_false(validation.is_positive_integer("abc123"), "String with leading characters should fail")
+  test_runner.assert_false(validation.is_positive_integer(" 123 "), "String with whitespace should fail")
+  test_runner.assert_false(validation.is_positive_integer("+123"), "String with plus sign should fail")
+end
+
 function tests.test_is_valid_attendance_status()
   test_runner.assert_true(validation.is_valid_attendance_status("present"), "Present status should pass")
   test_runner.assert_true(validation.is_valid_attendance_status("absent"), "Absent status should pass")

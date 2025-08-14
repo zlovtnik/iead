@@ -7,6 +7,7 @@ local json_utils = require("src.utils.json")
 local security = require("src.utils.security")
 local auth = require("src.middleware.auth")
 local log = require("src.utils.log")
+local validation = require("src.utils.validation")
 
 local UserController = {}
 
@@ -22,18 +23,17 @@ local function validate_user_id(user_id, client)
     return nil
   end
   
-  local numeric_id = tonumber(user_id)
-  if not numeric_id or numeric_id <= 0 then
+  if not validation.is_positive_integer(user_id) then
     json_utils.send_json_response(client, 400, {
       error = "Invalid user ID",
       code = "INVALID_USER_ID",
-      message = "User ID must be a positive number",
+      message = "User ID must be a positive integer",
       timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
     })
     return nil
   end
   
-  return numeric_id
+  return tonumber(user_id)
 end
 
 -- List all users endpoint (Admin only)
