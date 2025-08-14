@@ -151,13 +151,6 @@ jobs:
             -Dsonar.exclusions=**/node_modules/**,**/vendor/**,**/dist/**,**/build/**
             -Dsonar.test.exclusions=**/node_modules/**,**/vendor/**,**/dist/**,**/build/**
             -Dsonar.coverage.exclusions=src/tests/**,scripts/**,bin/**
-      
-      - name: SonarQube Quality Gate check
-        uses: sonarqube-quality-gate-action@master
-        timeout-minutes: 5
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        continue-on-error: true
 
   build:
     name: Build Application
