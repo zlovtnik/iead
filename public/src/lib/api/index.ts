@@ -9,6 +9,17 @@ export {
   type MemberFilters,
   type MemberListResponse
 } from './members.js';
+export {
+  EventsApi,
+  type Event,
+  type EventFormData,
+  type EventSearchParams,
+  type EventFilters,
+  type EventListResponse,
+  type AttendanceRecord,
+  type VolunteerAssignment,
+  type EventStats
+} from './events.js';
 export { 
   reportsApi,
   type DashboardMetrics,

@@ -18,3 +18,24 @@ export {
   isAnyMemberOperation
 } from './members.js';
 export type { MembersState } from './members.js';
+
+export {
+  default as events,
+  eventsList,
+  selectedEvent,
+  isLoadingEvents,
+  isCreatingEvent,
+  isUpdatingEvent,
+  isDeletingEvent,
+  eventsError,
+  eventsPagination,
+  eventsSearchQuery,
+  eventsFilters,
+  calendarView,
+  currentDate,
+  hasEvents,
+  upcomingEvents,
+  pastEvents,
+  isAnyEventOperation
+} from './events.js';
+export type { EventsState } from './events.js';
