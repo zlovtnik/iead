@@ -153,15 +153,15 @@ router.register("/", {
 
 -- Authentication routes
 router.register("/auth/login", {
-  POST = auth.protect(AuthController.login, auth.login_rate_limit("username"))
+  POST = AuthController.login
 })
 
 router.register("/auth/logout", {
-  POST = auth.protect(AuthController.logout, auth.require_member())
+  POST = AuthController.logout
 })
 
 router.register("/auth/refresh", {
-  POST = auth.protect(AuthController.refresh_token, auth.require_member())
+  POST = AuthController.refresh_token
 })
 
 router.register("/auth/me", {
