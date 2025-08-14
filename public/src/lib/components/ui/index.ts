@@ -6,3 +6,8 @@ export { default as Toast } from './Toast.svelte';
 export { default as ToastContainer } from './ToastContainer.svelte';
 export { default as Loading } from './Loading.svelte';
 export { default as Skeleton } from './Skeleton.svelte';
+
+// Table components
+export { default as DataTable } from './DataTable.svelte';
+export { default as TableHeader } from './TableHeader.svelte';
+export { default as TablePagination } from './TablePagination.svelte';
