@@ -146,7 +146,7 @@ jobs:
           args: >
             -Dsonar.projectKey=zlovtnik_iead
             -Dsonar.organization=zlovtnik
-            -Dsonar.sources=src,app.lua
+            -Dsonar.sources=src/controllers,src/models,src/utils,src/middleware,src/routes,src/views,src/config,src/db,app.lua
             -Dsonar.tests=src/tests
             -Dsonar.exclusions=**/node_modules/**,**/vendor/**,**/dist/**,**/build/**
             -Dsonar.test.exclusions=**/node_modules/**,**/vendor/**,**/dist/**,**/build/**
