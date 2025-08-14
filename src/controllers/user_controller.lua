@@ -151,6 +151,30 @@ function UserController.update_user(client, params, user_id)
     return
   end
   
+  -- Prevent admin from changing their own role or deactivating themselves
+  local current_user = auth.get_current_user(params)
+  if current_user and tonumber(current_user.id) == numeric_user_id then
+    if params.role ~= nil then
+      json_utils.send_json_response(client, 400, {
+        error = "Cannot change own role",
+        code = "CANNOT_CHANGE_OWN_ROLE",
+        message = "You cannot change your own role",
+        timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+      })
+      return
+    end
+    
+    if params.is_active == false then
+      json_utils.send_json_response(client, 400, {
+        error = "Cannot deactivate own account",
+        code = "CANNOT_DEACTIVATE_SELF",
+        message = "You cannot deactivate your own account",
+        timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+      })
+      return
+    end
+  end
+  
   -- Extract update data from params
   local update_data = {}
   if params.username then update_data.username = params.username end
