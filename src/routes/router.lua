@@ -12,6 +12,7 @@ local ReportController = require("src.controllers.report_controller")
 local TitheController = require("src.controllers.tithe_controller")
 local AuthController = require("src.controllers.auth_controller")
 local UserController = require("src.controllers.user_controller")
+local auth = require("src.middleware.auth")
 local json_utils = require("src.utils.json")
 local views = require("src.views.home")
 
@@ -152,176 +153,176 @@ router.register("/", {
 
 -- Authentication routes
 router.register("/auth/login", {
-  POST = AuthController.login
+  POST = auth.protect(AuthController.login, auth.login_rate_limit("username"))
 })
 
 router.register("/auth/logout", {
-  POST = AuthController.logout
+  POST = auth.protect(AuthController.logout, auth.require_member())
 })
 
 router.register("/auth/refresh", {
-  POST = AuthController.refresh_token
+  POST = auth.protect(AuthController.refresh_token, auth.require_member())
 })
 
 router.register("/auth/me", {
-  GET = AuthController.get_current_user
+  GET = auth.protect(AuthController.get_current_user, auth.require_member())
 })
 
 router.register("/auth/password", {
-  PUT = AuthController.change_password
+  PUT = auth.protect(AuthController.change_password, auth.require_member())
 })
 
 -- User management routes (Admin only)
 router.register("/users", {
-  GET = UserController.list_users,
-  POST = UserController.create_user
+  GET = auth.protect(UserController.list_users, auth.require_admin()),
+  POST = auth.protect(UserController.create_user, auth.require_admin())
 })
 
 router.register("^/users/(%d+)$", {
-  GET = UserController.get_user,
-  PUT = UserController.update_user,
-  DELETE = UserController.deactivate_user
+  GET = auth.protect(UserController.get_user, auth.require_admin()),
+  PUT = auth.protect(UserController.update_user, auth.require_admin()),
+  DELETE = auth.protect(UserController.deactivate_user, auth.require_admin())
 })
 
 router.register("^/users/(%d+)/activate$", {
-  POST = UserController.activate_user
+  POST = auth.protect(UserController.activate_user, auth.require_admin())
 })
 
 router.register("^/users/(%d+)/reset-password$", {
-  POST = UserController.reset_password
+  POST = auth.protect(UserController.reset_password, auth.require_admin())
 })
 
 router.register("^/users/(%d+)/change-role$", {
-  POST = UserController.change_role
+  POST = auth.protect(UserController.change_role, auth.require_admin())
 })
 
 -- Members
 router.register("/members", {
-  GET = MemberController.index,
-  POST = MemberController.create
+  GET = auth.protect(MemberController.index, auth.require_pastor()),
+  POST = auth.protect(MemberController.create, auth.require_pastor())
 })
 
 router.register("^/members/(%d+)$", {
-  GET = MemberController.show,
-  PUT = MemberController.update,
-  DELETE = MemberController.delete
+  GET = auth.protect(MemberController.show, auth.require_member_access()),
+  PUT = auth.protect(MemberController.update, auth.require_member_access()),
+  DELETE = auth.protect(MemberController.delete, auth.require_pastor())
 })
 
 -- Events
 router.register("/events", {
-  GET = EventController.index,
-  POST = EventController.create
+  GET = auth.protect(EventController.index, auth.require_member()),
+  POST = auth.protect(EventController.create, auth.require_pastor())
 })
 
 router.register("^/events/(%d+)$", {
-  GET = EventController.show,
-  PUT = EventController.update,
-  DELETE = EventController.delete
+  GET = auth.protect(EventController.show, auth.require_member()),
+  PUT = auth.protect(EventController.update, auth.require_pastor()),
+  DELETE = auth.protect(EventController.delete, auth.require_pastor())
 })
 
 -- Attendance
 router.register("/attendance", {
-  GET = AttendanceController.index,
-  POST = AttendanceController.create
+  GET = auth.protect(AttendanceController.index, auth.require_pastor()),
+  POST = auth.protect(AttendanceController.create, auth.require_pastor())
 })
 
 router.register("^/attendance/(%d+)$", {
-  GET = AttendanceController.show,
-  PUT = AttendanceController.update,
-  DELETE = AttendanceController.delete
+  GET = auth.protect(AttendanceController.show, auth.require_pastor()),
+  PUT = auth.protect(AttendanceController.update, auth.require_pastor()),
+  DELETE = auth.protect(AttendanceController.delete, auth.require_pastor())
 })
 
 router.register("^/events/(%d+)/attendance$", {
-  GET = AttendanceController.by_event
+  GET = auth.protect(AttendanceController.by_event, auth.require_pastor())
 })
 
 router.register("^/members/(%d+)/attendance$", {
-  GET = AttendanceController.by_member
+  GET = auth.protect(AttendanceController.by_member, auth.require_member_access())
 })
 
 -- Donations
 router.register("/donations", {
-  GET = DonationController.index,
-  POST = DonationController.create
+  GET = auth.protect(DonationController.index, auth.require_pastor()),
+  POST = auth.protect(DonationController.create, auth.require_pastor())
 })
 
 router.register("^/donations/(%d+)$", {
-  GET = DonationController.show,
-  PUT = DonationController.update,
-  DELETE = DonationController.delete
+  GET = auth.protect(DonationController.show, auth.require_pastor()),
+  PUT = auth.protect(DonationController.update, auth.require_pastor()),
+  DELETE = auth.protect(DonationController.delete, auth.require_pastor())
 })
 
 router.register("^/members/(%d+)/donations$", {
-  GET = DonationController.by_member
+  GET = auth.protect(DonationController.by_member, auth.require_member_access())
 })
 
 -- Tithes
 router.register("/tithes", {
-  GET = TitheController.index,
-  POST = TitheController.create
+  GET = auth.protect(TitheController.index, auth.require_pastor()),
+  POST = auth.protect(TitheController.create, auth.require_pastor())
 })
 
 router.register("^/tithes/(%d+)$", {
-  GET = TitheController.show,
-  PUT = TitheController.update,
-  DELETE = TitheController.delete
+  GET = auth.protect(TitheController.show, auth.require_pastor()),
+  PUT = auth.protect(TitheController.update, auth.require_pastor()),
+  DELETE = auth.protect(TitheController.delete, auth.require_pastor())
 })
 
 router.register("^/tithes/(%d+)/pay$", {
-  POST = TitheController.mark_paid
+  POST = auth.protect(TitheController.mark_paid, auth.require_pastor())
 })
 
 router.register("^/members/(%d+)/tithes$", {
-  GET = TitheController.by_member
+  GET = auth.protect(TitheController.by_member, auth.require_member_access())
 })
 
 router.register("^/members/(%d+)/tithe-calculation$", {
-  GET = TitheController.calculate
+  GET = auth.protect(TitheController.calculate, auth.require_member_access())
 })
 
 router.register("/tithes/generate-monthly", {
-  POST = TitheController.generate_monthly
+  POST = auth.protect(TitheController.generate_monthly, auth.require_pastor())
 })
 
 -- Volunteers
 router.register("/volunteers", {
-  GET = VolunteerController.index,
-  POST = VolunteerController.create
+  GET = auth.protect(VolunteerController.index, auth.require_pastor()),
+  POST = auth.protect(VolunteerController.create, auth.require_pastor())
 })
 
 router.register("^/volunteers/(%d+)$", {
-  GET = VolunteerController.show,
-  PUT = VolunteerController.update,
-  DELETE = VolunteerController.delete
+  GET = auth.protect(VolunteerController.show, auth.require_pastor()),
+  PUT = auth.protect(VolunteerController.update, auth.require_pastor()),
+  DELETE = auth.protect(VolunteerController.delete, auth.require_pastor())
 })
 
 router.register("^/members/(%d+)/volunteers$", {
-  GET = VolunteerController.by_member
+  GET = auth.protect(VolunteerController.by_member, auth.require_member_access())
 })
 
 router.register("^/events/(%d+)/volunteers$", {
-  GET = VolunteerController.by_event
+  GET = auth.protect(VolunteerController.by_event, auth.require_member())
 })
 
 -- Reports
 router.register("/reports/member-attendance", {
-  GET = ReportController.member_attendance
+  GET = auth.protect(ReportController.member_attendance, auth.require_pastor())
 })
 
 router.register("/reports/event-attendance", {
-  GET = ReportController.event_attendance
+  GET = auth.protect(ReportController.event_attendance, auth.require_pastor())
 })
 
 router.register("/reports/donation-summary", {
-  GET = ReportController.donation_summary
+  GET = auth.protect(ReportController.donation_summary, auth.require_pastor())
 })
 
 router.register("/reports/top-donors", {
-  GET = ReportController.top_donors
+  GET = auth.protect(ReportController.top_donors, auth.require_pastor())
 })
 
 router.register("/reports/volunteer-hours", {
-  GET = ReportController.volunteer_hours
+  GET = auth.protect(ReportController.volunteer_hours, auth.require_pastor())
 })
 
 return router
