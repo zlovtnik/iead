@@ -1,5 +1,10 @@
 # Church Management System
 
+[![CI/CD Pipeline](https://github.com/zlovtnik/iead/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/zlovtnik/iead/actions/workflows/ci-cd.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=zlovtnik_iead&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=zlovtnik_iead)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=zlovtnik_iead&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=zlovtnik_iead)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=zlovtnik_iead&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=zlovtnik_iead)
+
 A comprehensive web-based church management system built with pure Lua and SQLite. This application provides a complete RESTful API for managing church operations with 100% test coverage and robust functionality.
 
 ## 🎯 Project Status: **85% Complete**
@@ -37,6 +42,7 @@ A comprehensive web-based church management system built with pure Lua and SQLit
 - **100% Test Coverage** - 85 automated tests covering all functionality
 - **Input Validation** - Comprehensive validation for all data inputs
 - **Error Handling** - Proper error responses with appropriate HTTP status codes
+- **SonarQube Integration** - Continuous code quality analysis and security scanning
 
 ## 📋 Prerequisites
 
@@ -200,6 +206,7 @@ This project uses GitHub Actions for continuous integration and deployment. The 
 - **Lint**: Static code analysis using `luacheck`
 - **Test**: Run all tests in the application
 - **Security Scan**: Vulnerability scanning using Trivy
+- **SonarQube**: Code quality analysis and security scanning
 - **Build**: Build the application package
 - **Docker**: Build and push Docker images to GitHub Container Registry
 - **Deploy**: Automated deployment to staging and production environments
@@ -231,11 +238,14 @@ This project uses GitHub Actions for continuous integration and deployment. The 
 
 For the CI/CD pipeline to work, you need to set up the following secrets in your GitHub repository:
 
+- `SONAR_TOKEN`: SonarCloud token for code quality analysis
 - `DEPLOY_USERNAME`: SSH username for deployment
 - `DEPLOY_KEY`: SSH private key for deployment
 - `DEPLOY_PORT`: SSH port for deployment (usually 22)
 - `STAGING_HOST`: Hostname/IP for staging server
 - `PRODUCTION_HOST`: Hostname/IP for production server
+
+For detailed SonarQube setup instructions, see [docs/SONARQUBE_SETUP.md](docs/SONARQUBE_SETUP.md).
 
 #### GitHub Advanced Security
 
