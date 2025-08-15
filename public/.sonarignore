@@ -1,0 +1,63 @@
+# SonarQube ignore file for IEAD project
+
+# Dependencies
+node_modules/
+.pnpm/
+
+# Build outputs
+dist/
+build/
+.svelte-kit/
+.output/
+
+# Static assets
+static/
+public/
+
+# Configuration files
+*.config.js
+*.config.ts
+*.config.mjs
+vite.config.*
+vitest.config.*
+playwright.config.*
+tailwind.config.*
+postcss.config.*
+eslint.config.*
+
+# Package files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+deno.lock
+
+# Environment files
+.env*
+!.env.example
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Coverage reports
+coverage/
+.nyc_output/
+
+# Test artifacts
+test-results/
+playwright-report/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
