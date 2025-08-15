@@ -17,6 +17,42 @@ local function send_error_response(client, status, message, code)
   })
 end
 
+-- Helper function to validate date format and actual calendar date
+local function validate_date(date_string)
+  -- First check basic pattern
+  if not date_string:match("^%d%d%d%d%-%d%d%-%d%d$") then
+    return false
+  end
+  
+  -- Parse year, month, day
+  local year, month, day = date_string:match("^(%d%d%d%d)%-(%d%d)%-(%d%d)$")
+  year, month, day = tonumber(year), tonumber(month), tonumber(day)
+  
+  if not year or not month or not day then
+    return false
+  end
+  
+  -- Create date table
+  local date_table = {
+    year = year,
+    month = month,
+    day = day,
+    hour = 0,
+    min = 0,
+    sec = 0
+  }
+  
+  -- Try to create a time from the date table
+  local time = os.time(date_table)
+  if not time then
+    return false
+  end
+  
+  -- Format the time back to YYYY-MM-DD and compare with original
+  local formatted_date = os.date("!%Y-%m-%d", time)
+  return formatted_date == date_string
+end
+
 -- Helper function to validate event ID
 local function validate_event_id(event_id, client)
   local id = tonumber(event_id)
@@ -46,9 +82,12 @@ function EventController.index(client, params)
   -- Handle search
   local search_query = params.search
   local events, err
+  local pagination = nil
   
   if search_query and search_query ~= "" then
     events, err = EventService.search_events(search_query, filters, params.current_user)
+    -- Note: Search doesn't currently support pagination
+    -- TODO: Update EventService.search_events to return paginated results
   else
     -- Use repository directly for listing with pagination
     local EventRepository = require("src.infrastructure.repositories.event_repository")
@@ -70,18 +109,15 @@ function EventController.index(client, params)
     
     local result, repo_err = event_repo:paginate(options)
     if result then
-      json_utils.send_json_response(client, 200, {
-        events = result.records,
-        pagination = {
-          current_page = result.current_page,
-          per_page = result.per_page,
-          total_count = result.total_count,
-          total_pages = result.total_pages,
-          has_next = result.has_next,
-          has_prev = result.has_prev
-        }
-      })
-      return
+      events = result.records
+      pagination = {
+        current_page = result.current_page,
+        per_page = result.per_page,
+        total_count = result.total_count,
+        total_pages = result.total_pages,
+        has_next = result.has_next,
+        has_prev = result.has_prev
+      }
     else
       err = repo_err
     end
@@ -92,9 +128,17 @@ function EventController.index(client, params)
     return
   end
   
-  json_utils.send_json_response(client, 200, {
+  -- Unified response for both search and pagination
+  local response = {
     events = events
-  })
+  }
+  
+  -- Add pagination metadata if available
+  if pagination then
+    response.pagination = pagination
+  end
+  
+  json_utils.send_json_response(client, 200, response)
 end
 
 -- Get a specific event with attendance statistics
@@ -351,8 +395,13 @@ function EventController.generate_report(client, params)
     return
   end
   
-  -- Validate date format (basic check)
-  if not start_date:match("^%d%d%d%d%-%d%d%-%d%d$") or not end_date:match("^%d%d%d%d%-%d%d%-%d%d$") then
+  -- Validate date format and calendar validity
+  if not validate_date(start_date) then
+    send_error_response(client, 400, "Invalid date format. Use YYYY-MM-DD", "INVALID_DATE_FORMAT")
+    return
+  end
+  
+  if not validate_date(end_date) then
     send_error_response(client, 400, "Invalid date format. Use YYYY-MM-DD", "INVALID_DATE_FORMAT")
     return
   end

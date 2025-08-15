@@ -11,12 +11,14 @@ BaseRepository.__index = BaseRepository
 -- Create a new repository instance
 -- @param table_name string The database table name
 -- @param schema table Optional schema definition for validation
+-- @param allowed_columns table Optional array of allowed column names for ORDER BY
 -- @return BaseRepository instance
-function BaseRepository.new(table_name, schema)
+function BaseRepository.new(table_name, schema, allowed_columns)
   local instance = {
     table_name = table_name,
     schema = schema or {},
-    primary_key = "id"  -- Default primary key column
+    primary_key = "id",  -- Default primary key column
+    allowed_columns = allowed_columns or {}
   }
   setmetatable(instance, BaseRepository)
   return instance
@@ -26,6 +28,56 @@ end
 -- @param key_name string The primary key column name
 function BaseRepository:set_primary_key(key_name)
   self.primary_key = key_name
+end
+
+-- Set allowed columns for ORDER BY clauses
+-- @param columns table Array of allowed column names
+function BaseRepository:set_allowed_columns(columns)
+  self.allowed_columns = columns or {}
+end
+
+-- Validate and sanitize ORDER BY clause
+-- @param order_by string The column name to order by
+-- @param order_direction string The direction (ASC/DESC)
+-- @return validated_column, validated_direction (nil if invalid)
+function BaseRepository:validate_order_clause(order_by, order_direction)
+  -- If no allowed columns defined, extract from schema or use common defaults
+  local allowed = self.allowed_columns
+  if not allowed or #allowed == 0 then
+    if self.schema and next(self.schema) then
+      allowed = {}
+      for field, _ in pairs(self.schema) do
+        table.insert(allowed, field)
+      end
+    else
+      -- Fallback to common columns - repositories should define their own
+      allowed = {"id", "created_at", "updated_at"}
+    end
+  end
+  
+  -- Validate column name against allowlist
+  local is_allowed = false
+  for _, col in ipairs(allowed) do
+    if col == order_by then
+      is_allowed = true
+      break
+    end
+  end
+  
+  if not is_allowed then
+    return nil, nil  -- Invalid column
+  end
+  
+  -- Validate direction
+  local direction = "ASC"  -- Default
+  if order_direction then
+    local upper_dir = string.upper(order_direction)
+    if upper_dir == "ASC" or upper_dir == "DESC" then
+      direction = upper_dir
+    end
+  end
+  
+  return order_by, direction
 end
 
 -- Validate data against schema if defined
@@ -164,10 +216,20 @@ function BaseRepository:find_all(options)
     end
   end
   
-  -- Add ORDER BY clause
+  -- Add ORDER BY clause with validation
   if options.order_by then
-    local direction = options.order_direction or "ASC"
-    query = query .. " ORDER BY " .. options.order_by .. " " .. direction
+    local validated_column, validated_direction = self:validate_order_clause(options.order_by, options.order_direction)
+    if validated_column then
+      query = query .. " ORDER BY " .. validated_column .. " " .. validated_direction
+    else
+      -- Log attempted SQL injection or invalid column
+      log.warn("Invalid ORDER BY column attempted", {
+        table = self.table_name,
+        attempted_column = options.order_by,
+        allowed_columns = self.allowed_columns
+      })
+      -- Could alternatively return an error here: return nil, "Invalid order column"
+    end
   end
   
   -- Add LIMIT and OFFSET

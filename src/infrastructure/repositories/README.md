@@ -263,20 +263,67 @@ To integrate repositories with your existing controllers:
 ```lua
 -- In your controller
 local UserRepository = require("src.infrastructure.repositories.user_repository")
+local json_utils = require("src.utils.json_utils")
 
 local UserController = {}
 
 function UserController.list_users(client, params)
   local user_repo = UserRepository.new()
   
+  -- Validate pagination parameters
   local page = tonumber(params.page) or 1
   local per_page = tonumber(params.per_page) or 10
+  
+  -- Whitelist allowed sort columns
+  local allowed_sort_columns = {
+    username = "username",
+    email = "email", 
+    created_at = "created_at",
+    is_active = "is_active"
+  }
+  
+  -- Validate and whitelist sort direction
+  local allowed_directions = {
+    asc = "ASC",
+    desc = "DESC"
+  }
+  
+  -- Validate sort_by parameter
+  local sort_by = "username" -- default
+  if params.sort_by and allowed_sort_columns[params.sort_by] then
+    sort_by = allowed_sort_columns[params.sort_by]
+  end
+  
+  -- Validate sort direction
+  local sort_direction = "ASC" -- default
+  if params.sort_direction and allowed_directions[string.lower(params.sort_direction)] then
+    sort_direction = allowed_directions[string.lower(params.sort_direction)]
+  end
+  
+  -- Whitelist allowed filter keys
+  local allowed_filter_keys = {
+    is_active = "is_active",
+    email = "email",
+    username = "username"
+  }
+  
+  -- Validate and filter conditions
+  local safe_conditions = {}
+  if params.filters then
+    for key, value in pairs(params.filters) do
+      local safe_key = allowed_filter_keys[key]
+      if safe_key then
+        safe_conditions[safe_key] = value
+      end
+    end
+  end
   
   local result, err = user_repo:paginate({
     page = page,
     per_page = per_page,
-    conditions = params.filters,
-    order_by = params.sort_by or "username"
+    conditions = safe_conditions,
+    order_by = sort_by,
+    order_direction = sort_direction
   })
   
   if not result then

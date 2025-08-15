@@ -134,6 +134,18 @@ end
 function EventRepository:find_events_in_date_range(start_date, end_date, options)
   options = options or {}
   
+  -- Define allowed column names for events table
+  local allowed_columns = {
+    ["id"] = true,
+    ["title"] = true,
+    ["description"] = true,
+    ["start_date"] = true,
+    ["end_date"] = true,
+    ["location"] = true,
+    ["created_at"] = true,
+    ["is_active"] = true
+  }
+  
   local query = [[
     SELECT * FROM events 
     WHERE start_date >= ? AND start_date <= ?
@@ -142,30 +154,36 @@ function EventRepository:find_events_in_date_range(start_date, end_date, options
   
   local params = {start_date, end_date}
   
-  -- Add additional conditions
+  -- Add additional conditions (only for allowed columns)
   if options.conditions then
     for field, value in pairs(options.conditions) do
-      if field ~= "start_date" and field ~= "is_active" then
+      if field ~= "start_date" and field ~= "is_active" and allowed_columns[field] then
         query = query .. " AND " .. field .. " = ?"
         table.insert(params, value)
       end
     end
   end
   
-  -- Add ordering
-  if options.order_by then
-    local direction = options.order_direction or "ASC"
+  -- Add ordering with validation
+  if options.order_by and allowed_columns[options.order_by] then
+    local direction = "ASC"
+    if options.order_direction then
+      local upper_dir = string.upper(options.order_direction)
+      if upper_dir == "ASC" or upper_dir == "DESC" then
+        direction = upper_dir
+      end
+    end
     query = query .. " ORDER BY " .. options.order_by .. " " .. direction
   else
     query = query .. " ORDER BY start_date ASC"
   end
   
-  -- Add pagination
-  if options.limit then
+  -- Add pagination with validation
+  if options.limit and type(options.limit) == "number" and options.limit > 0 then
     query = query .. " LIMIT ?"
     table.insert(params, options.limit)
     
-    if options.offset then
+    if options.offset and type(options.offset) == "number" and options.offset >= 0 then
       query = query .. " OFFSET ?"
       table.insert(params, options.offset)
     end
@@ -190,6 +208,18 @@ end
 function EventRepository:search(query, options)
   options = options or {}
   
+  -- Define allowed column names for events table
+  local allowed_columns = {
+    id = "id",
+    title = "title",
+    description = "description", 
+    start_date = "start_date",
+    end_date = "end_date",
+    location = "location",
+    created_at = "created_at",
+    is_active = "is_active"
+  }
+  
   local search_query = [[
     SELECT * FROM events 
     WHERE (title LIKE ? OR description LIKE ?)
@@ -198,30 +228,41 @@ function EventRepository:search(query, options)
   
   local params = {"%" .. query .. "%", "%" .. query .. "%"}
   
-  -- Add additional conditions
+  -- Add additional conditions (only for allowed columns)
   if options.conditions then
     for field, value in pairs(options.conditions) do
       if field ~= "title" and field ~= "description" and field ~= "is_active" then
-        search_query = search_query .. " AND " .. field .. " = ?"
-        table.insert(params, value)
+        local safe_column = allowed_columns[field]
+        if safe_column then
+          search_query = search_query .. " AND " .. safe_column .. " = ?"
+          table.insert(params, value)
+        else
+          return nil, "Invalid field name for search condition: " .. tostring(field)
+        end
       end
     end
   end
   
-  -- Add ordering
-  if options.order_by then
-    local direction = options.order_direction or "ASC"
+  -- Add ordering with validation
+  if options.order_by and allowed_columns[options.order_by] then
+    local direction = "ASC"
+    if options.order_direction then
+      local upper_dir = string.upper(options.order_direction)
+      if upper_dir == "ASC" or upper_dir == "DESC" then
+        direction = upper_dir
+      end
+    end
     search_query = search_query .. " ORDER BY " .. options.order_by .. " " .. direction
   else
     search_query = search_query .. " ORDER BY start_date ASC"
   end
   
-  -- Add pagination
-  if options.limit then
+  -- Add pagination with validation
+  if options.limit and type(options.limit) == "number" and options.limit > 0 then
     search_query = search_query .. " LIMIT ?"
     table.insert(params, options.limit)
     
-    if options.offset then
+    if options.offset and type(options.offset) == "number" and options.offset >= 0 then
       search_query = search_query .. " OFFSET ?"
       table.insert(params, options.offset)
     end
@@ -233,6 +274,18 @@ end
 -- Get events with attendance counts
 function EventRepository:find_events_with_attendance_stats(options)
   options = options or {}
+  
+  -- Define allowed column names for events table
+  local allowed_columns = {
+    ["id"] = true,
+    ["title"] = true,
+    ["description"] = true,
+    ["start_date"] = true,
+    ["end_date"] = true,
+    ["location"] = true,
+    ["created_at"] = true,
+    ["is_active"] = true
+  }
   
   local query = [[
     SELECT e.*, 
@@ -246,10 +299,10 @@ function EventRepository:find_events_with_attendance_stats(options)
   
   local params = {}
   
-  -- Add additional conditions
+  -- Add additional conditions (only for allowed columns)
   if options.conditions then
     for field, value in pairs(options.conditions) do
-      if field ~= "is_active" then
+      if field ~= "is_active" and allowed_columns[field] then
         query = query .. " AND e." .. field .. " = ?"
         table.insert(params, value)
       end
@@ -258,20 +311,26 @@ function EventRepository:find_events_with_attendance_stats(options)
   
   query = query .. " GROUP BY e.id"
   
-  -- Add ordering
-  if options.order_by then
-    local direction = options.order_direction or "ASC"
+  -- Add ordering with validation
+  if options.order_by and allowed_columns[options.order_by] then
+    local direction = "ASC"
+    if options.order_direction then
+      local upper_dir = string.upper(options.order_direction)
+      if upper_dir == "ASC" or upper_dir == "DESC" then
+        direction = upper_dir
+      end
+    end
     query = query .. " ORDER BY e." .. options.order_by .. " " .. direction
   else
     query = query .. " ORDER BY e.start_date ASC"
   end
   
-  -- Add pagination
-  if options.limit then
+  -- Add pagination with validation
+  if options.limit and type(options.limit) == "number" and options.limit > 0 then
     query = query .. " LIMIT ?"
     table.insert(params, options.limit)
     
-    if options.offset then
+    if options.offset and type(options.offset) == "number" and options.offset >= 0 then
       query = query .. " OFFSET ?"
       table.insert(params, options.offset)
     end

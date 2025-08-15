@@ -134,8 +134,23 @@ function MemberRepository:search(query, options)
   local params = {"%" .. query .. "%", "%" .. query .. "%", "%" .. query .. "%"}
   
   if options.conditions then
+    -- Define allowed condition fields
+    local allowed_fields = {
+      ["first_name"] = true,
+      ["last_name"] = true,
+      ["email"] = true,
+      ["phone"] = true,
+      ["address"] = true,
+      ["date_of_birth"] = true,
+      ["membership_date"] = true,
+      ["is_active"] = true
+    }
+    
     local where_parts = {}
     for field, value in pairs(options.conditions) do
+      if not allowed_fields[field] then
+        return nil, "Invalid condition field: " .. field
+      end
       table.insert(where_parts, field .. " = ?")
       table.insert(params, value)
     end
@@ -145,9 +160,30 @@ function MemberRepository:search(query, options)
     end
   end
   
-  -- Add ordering
+  -- Add ordering with validation
   if options.order_by then
-    local direction = options.order_direction or "ASC"
+    local allowed_order_fields = {
+      ["first_name"] = true,
+      ["last_name"] = true,
+      ["email"] = true,
+      ["phone"] = true,
+      ["address"] = true,
+      ["date_of_birth"] = true,
+      ["membership_date"] = true,
+      ["is_active"] = true
+    }
+    
+    if not allowed_order_fields[options.order_by] then
+      return nil, "Invalid order field: " .. options.order_by
+    end
+    
+    local direction = "ASC"
+    if options.order_direction then
+      local upper_dir = string.upper(options.order_direction)
+      if upper_dir == "ASC" or upper_dir == "DESC" then
+        direction = upper_dir
+      end
+    end
     search_query = search_query .. " ORDER BY " .. options.order_by .. " " .. direction
   end
   
@@ -220,10 +256,25 @@ function MemberRepository:get_stats()
     return nil, active_err
   end
   
-  -- Get new members this month
-  local current_month = os.date("!%Y-%m")
-  local new_this_month_query = "SELECT COUNT(*) as count FROM members WHERE membership_date LIKE ?"
-  local new_result, new_err = self.base:execute_query_one(new_this_month_query, {current_month .. "%"})
+  -- Get new members this month using proper date range
+  local current_date = os.date("!%Y-%m-%d")
+  local year, month = current_date:match("(%d%d%d%d)-(%d%d)")
+  local month_start = year .. "-" .. month .. "-01"
+  
+  -- Calculate month end (first day of next month minus 1 day)
+  local next_month = tonumber(month) + 1
+  local next_year = tonumber(year)
+  if next_month > 12 then
+    next_month = 1
+    next_year = next_year + 1
+  end
+  local next_month_start = string.format("%04d-%02d-01", next_year, next_month)
+  
+  local new_this_month_query = [[
+    SELECT COUNT(*) as count FROM members 
+    WHERE membership_date >= ? AND membership_date < ?
+  ]]
+  local new_result, new_err = self.base:execute_query_one(new_this_month_query, {month_start, next_month_start})
   if not new_result then
     return nil, new_err
   end

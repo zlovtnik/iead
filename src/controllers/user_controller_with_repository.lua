@@ -69,6 +69,40 @@ local function parse_boolean(value)
   return nil -- unparseable
 end
 
+-- Helper function to sanitize data for logging (removes sensitive fields)
+local function sanitize_for_logging(data)
+  if type(data) ~= "table" then
+    return data
+  end
+  
+  -- Define sensitive field patterns that should be masked or omitted
+  local sensitive_fields = {
+    ["password"] = true,
+    ["password_hash"] = true,
+    ["ssn"] = true,
+    ["token"] = true,
+    ["auth_token"] = true,
+    ["auth_key"] = true,
+    ["auth_secret"] = true,
+    ["session_token"] = true,
+    ["api_key"] = true,
+    ["secret"] = true
+  }
+  
+  local sanitized = {}
+  for key, value in pairs(data) do
+    local lower_key = string.lower(key)
+    if sensitive_fields[lower_key] or string.match(lower_key, "^auth_") then
+      -- Omit sensitive fields entirely from logs
+      -- Could alternatively use: sanitized[key] = "[REDACTED]"
+    else
+      sanitized[key] = value
+    end
+  end
+  
+  return sanitized
+end
+
 -- List all users with pagination and filtering
 -- GET /users
 function UserController.list_users(client, params)
@@ -106,10 +140,16 @@ function UserController.list_users(client, params)
       return
     end
     
-    -- For search, we need to manually count total results
-    local total_count, count_err = user_repo:count(conditions) -- This is approximate for search
+    -- Count search results using search-aware count method
+    local total_count, count_err = user_repo:count_search(search_query, {conditions = conditions})
     if not total_count then
+      -- Fallback to result count if search count fails
       total_count = #users
+      log.warn("Search count failed, using result count as fallback", {
+        search_query = search_query,
+        count_error = count_err,
+        result_count = total_count
+      })
     end
     
     json_utils.send_json_response(client, 200, {
@@ -344,7 +384,7 @@ function UserController.update_user(client, params, user_id)
   
   log.info("User updated", {
     user_id = id,
-    updated_fields = update_data,
+    updated_fields = sanitize_for_logging(update_data),
     updated_by = params.current_user and params.current_user.id
   })
   

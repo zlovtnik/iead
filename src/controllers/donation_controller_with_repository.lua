@@ -24,8 +24,11 @@ local function validate_donation_data(data)
   -- Required fields
   if not data.amount or data.amount == "" then
     table.insert(errors, "amount is required")
-  elseif tonumber(data.amount) and tonumber(data.amount) <= 0 then
-    table.insert(errors, "amount must be greater than 0")
+  else
+    local amt = tonumber(data.amount)
+    if not amt or amt <= 0 then
+      table.insert(errors, "amount must be greater than 0")
+    end
   end
   
   if not data.category or data.category == "" then

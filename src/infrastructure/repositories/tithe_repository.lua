@@ -81,7 +81,7 @@ end
 function TitheRepository:create(data)
   -- Set default tithe date to today if not provided
   if not data.tithe_date then
-    data.tithe_date = os.date("!%Y-%m-%d")
+    data.tithe_date = os.date("%Y-%m-%d")
   end
   
   -- Set default payment method if not provided
@@ -412,7 +412,7 @@ end
 function TitheRepository:get_unpaid_tithes_for_followup(days_overdue)
   days_overdue = days_overdue or 30
   
-  local cutoff_date = os.date("!%Y-%m-%d", os.time() - (days_overdue * 24 * 60 * 60))
+  local cutoff_date = os.date("%Y-%m-%d", os.time() - (days_overdue * 24 * 60 * 60))
   
   local query = [[
     SELECT t.*, m.first_name, m.last_name, m.email, m.phone
