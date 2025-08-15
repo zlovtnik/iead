@@ -36,50 +36,44 @@ export const auth = {
    * Should be called on app startup
    */
   async init(): Promise<void> {
-    if (!browser) return;
+    if (!browser) {
+      authStore.update(state => ({
+        ...state,
+        isInitialized: true,
+        isLoading: false
+      }));
+      return;
+    }
 
     authStore.update(state => ({ ...state, isLoading: true }));
 
     try {
-      // Check if we have stored tokens
-      if (TokenStorage.hasValidTokens()) {
-        const storedUser = TokenStorage.getUser();
-        
-        if (storedUser) {
-          // Try to verify the user is still valid
+      const token = TokenStorage.getToken();
+      const refreshToken = TokenStorage.getRefreshToken();
+
+      if (token && refreshToken) {
+        try {
+          // Try to get current user to validate token
+          const currentUser = await AuthApi.me();
+          
+          authStore.update(state => ({
+            ...state,
+            user: currentUser,
+            isAuthenticated: true,
+            isLoading: false,
+            error: null,
+            isInitialized: true
+          }));
+          
+          // Update stored user data
+          TokenStorage.setUser(currentUser);
+        } catch (error) {
+          // Token might be invalid, try to refresh
           try {
-            const currentUser = await AuthApi.me();
-            authStore.update(state => ({
-              ...state,
-              user: currentUser,
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-              isInitialized: true
-            }));
-            
-            // Update stored user data
-            TokenStorage.setUser(currentUser);
-          } catch (error) {
-            // Token might be invalid, try to refresh
             await this.refreshToken();
-          }
-        } else {
-          // We have tokens but no user data, fetch user
-          try {
-            const currentUser = await AuthApi.me();
-            authStore.update(state => ({
-              ...state,
-              user: currentUser,
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-              isInitialized: true
-            }));
-            
-            TokenStorage.setUser(currentUser);
-          } catch (error) {
-            // Clear invalid tokens
+          } catch (refreshError) {
+            // Refresh failed, clear auth state
+            console.error('Token refresh failed during init:', refreshError);
             this.clearAuth();
           }
         }
@@ -211,6 +205,17 @@ export const auth = {
       isLoading: false,
       error: null,
       isInitialized: true
+    }));
+  },
+
+  /**
+   * Helper to set initialized state for non-browser environments
+   */
+  setInitializedState(): void {
+    authStore.update(state => ({
+      ...state,
+      isInitialized: true,
+      isLoading: false
     }));
   },
 

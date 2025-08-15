@@ -41,6 +41,12 @@ export {
   type MemberReport,
   type ReportFilters
 } from './reports.js';
+export {
+  donationsApi
+} from './donations.js';
+export {
+  tithesApi
+} from './tithes.js';
 export { 
   ApiException, 
   type ApiResponse, 
@@ -49,7 +55,16 @@ export {
   type PaginatedResponse,
   type LoginCredentials,
   type AuthTokens,
-  type RefreshTokenRequest
+  type RefreshTokenRequest,
+  type Donation,
+  type Tithe,
+  type PaymentMethod,
+  type DonationSearchParams,
+  type TitheSearchParams,
+  type TitheGenerationRequest,
+  type PaymentMarkRequest,
+  type ComplianceReportParams,
+  type TitheTrends
 } from './types.js';
 export {
   extractValidationErrors,

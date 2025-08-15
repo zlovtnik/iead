@@ -95,6 +95,13 @@ export class TokenStorage {
   }
 
   /**
+   * Clear stored authentication tokens (alias for clearAll)
+   */
+  static clearTokens(): void {
+    this.clearAll();
+  }
+
+  /**
    * Check if user is authenticated (has valid tokens)
    */
   static hasValidTokens(): boolean {

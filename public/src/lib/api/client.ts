@@ -16,7 +16,7 @@ export interface ApiClient {
 }
 
 class HttpClient implements ApiClient {
-  private axiosInstance: AxiosInstance;
+  private readonly axiosInstance: AxiosInstance;
   private isRefreshing = false;
   private failedQueue: Array<{
     resolve: (value: any) => void;
@@ -203,3 +203,6 @@ class HttpClient implements ApiClient {
 
 // Create and export singleton instance
 export const apiClient = new HttpClient();
+
+// Export TokenStorage for external use
+export { TokenStorage };

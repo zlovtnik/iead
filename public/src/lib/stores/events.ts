@@ -253,10 +253,16 @@ export const events = {
         selectedEvent: s.selectedEvent?.id === id ? null : s.selectedEvent,
         isDeleting: false,
         error: null,
-        // Clear related data
-        eventAttendance: { ...s.eventAttendance, [id]: undefined },
-        eventVolunteers: { ...s.eventVolunteers, [id]: undefined },
-        eventStats: { ...s.eventStats, [id]: undefined }
+        // Clear related data - create new objects without the deleted event
+        eventAttendance: Object.fromEntries(
+          Object.entries(s.eventAttendance).filter(([key]) => Number(key) !== id)
+        ) as Record<number, AttendanceRecord[]>,
+        eventVolunteers: Object.fromEntries(
+          Object.entries(s.eventVolunteers).filter(([key]) => Number(key) !== id)
+        ) as Record<number, VolunteerAssignment[]>,
+        eventStats: Object.fromEntries(
+          Object.entries(s.eventStats).filter(([key]) => Number(key) !== id)
+        ) as Record<number, EventStats>
       }));
       
       // Reload to get updated pagination
