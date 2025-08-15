@@ -1,0 +1,109 @@
+# Prometheus configuration for Church Management System monitoring
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'church_management_prod'
+    environment: 'production'
+
+rule_files:
+  - "alerts.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # Application metrics
+  - job_name: 'church-management-app'
+    static_configs:
+      - targets: ['app:8080']
+    metrics_path: /api/metrics
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    honor_labels: true
+
+  # Application exporter
+  - job_name: 'church-management-exporter'
+    static_configs:
+      - targets: ['app-exporter:9091']
+    metrics_path: /metrics
+    scrape_interval: 15s
+
+  # Redis metrics
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # Container metrics
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # Node exporter for system metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # Traefik metrics
+  - job_name: 'traefik'
+    static_configs:
+      - targets: ['traefik:8080']
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # Database metrics (custom exporter)
+  - job_name: 'sqlite-exporter'
+    static_configs:
+      - targets: ['sqlite-exporter:9092']
+    metrics_path: /metrics
+    scrape_interval: 60s
+
+# Recording rules for aggregated metrics
+recording_rules:
+  - name: church_management_rules
+    rules:
+      # Application response time percentiles
+      - record: church_management:http_request_duration_seconds:p95
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, job, instance))
+      
+      - record: church_management:http_request_duration_seconds:p99
+        expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, job, instance))
+      
+      # Request rate
+      - record: church_management:http_requests_per_second
+        expr: sum(rate(http_requests_total[5m])) by (job, instance, method, status)
+      
+      # Error rate
+      - record: church_management:http_error_rate
+        expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m]))
+      
+      # Database query performance
+      - record: church_management:db_query_duration_seconds:p95
+        expr: histogram_quantile(0.95, sum(rate(db_query_duration_seconds_bucket[5m])) by (le, query_type))
+      
+      # Active users
+      - record: church_management:active_sessions
+        expr: sum(active_sessions_total) by (instance)
+
+# Remote write for long-term storage (optional)
+# remote_write:
+#   - url: "https://prometheus.yourdomain.com/api/v1/write"
+#     basic_auth:
+#       username: "prometheus"
+#       password: "your-password"
