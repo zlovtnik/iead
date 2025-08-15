@@ -269,9 +269,17 @@ function tests.test_full_middleware_stack()
     ["Content-Type"] = "application/json"
   }, '{"test_field": "test_value"}')
   
-  -- Execute middleware stack
-  -- This would require more complex mocking to fully test
-  -- The structure confirms the middleware chain is properly composed
+  -- Create params object and execute the middleware
+  local params = { body = {test_field = "test_value"} }
+  
+  -- Wrap handler with middleware and execute
+  middleware(client, params, function()
+    test_handler(client, params)
+  end)
+  
+  -- Verify middleware execution
+  assert(test_data.request_id ~= nil, "Request ID should be set")
+  assert(test_data.api_version == "v1", "API version should be extracted")
   assert(type(middleware) == "function", "Should create middleware function")
 end
 
