@@ -196,7 +196,7 @@ function ApiVersioning.middleware()
     add_version_headers(client, version)
     
     -- Log version usage
-    log.debug("API version determined", {
+    log.info("API version determined", {
       request_id = request_id,
       requested_version = requested_version,
       resolved_version = version,
