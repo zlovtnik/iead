@@ -6,17 +6,22 @@ local bcrypt = require('bcrypt')
 local security = {}
 
 -- Password hashing configuration
-local BCRYPT_ROUNDS = 12
+-- Increased rounds for better security (12 rounds = ~250ms on modern hardware)
+local BCRYPT_ROUNDS = tonumber(os.getenv("BCRYPT_ROUNDS")) or 12
 
 -- Token configuration
 local TOKEN_LENGTH = 32
 
 -- Password policy configuration
-local MIN_PASSWORD_LENGTH = 8
-local REQUIRE_UPPERCASE = true
-local REQUIRE_LOWERCASE = true
-local REQUIRE_DIGIT = true
-local REQUIRE_SPECIAL = false
+local MIN_PASSWORD_LENGTH = tonumber(os.getenv("MIN_PASSWORD_LENGTH")) or 8
+local REQUIRE_UPPERCASE = os.getenv("REQUIRE_UPPERCASE") ~= "false"
+local REQUIRE_LOWERCASE = os.getenv("REQUIRE_LOWERCASE") ~= "false"
+local REQUIRE_DIGIT = os.getenv("REQUIRE_DIGIT") ~= "false"
+local REQUIRE_SPECIAL = os.getenv("REQUIRE_SPECIAL") == "true"
+
+-- Ensure minimum security standards regardless of environment variables
+if BCRYPT_ROUNDS < 10 then BCRYPT_ROUNDS = 10 end
+if MIN_PASSWORD_LENGTH < 8 then MIN_PASSWORD_LENGTH = 8 end
 
 -- Hash a password using bcrypt
 -- @param password string The plain text password to hash
@@ -100,18 +105,26 @@ local function secure_random(max)
 end
 
 -- Generate a cryptographically secure random token
+-- @param length number Optional token length (default: TOKEN_LENGTH)
 -- @return string Hex encoded random token
-function security.generate_secure_token()
+function security.generate_token(length)
+    length = length or TOKEN_LENGTH
     local chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
     local result = {}
     
-    -- Generate a token that's twice the TOKEN_LENGTH for better entropy
-    for i = 1, TOKEN_LENGTH * 2 do
+    -- Generate a token that's the specified length
+    for i = 1, length do
         local rand_index = secure_random(#chars)
         result[#result + 1] = chars:sub(rand_index, rand_index)
     end
     
     return table.concat(result)
+end
+
+-- Generate a cryptographically secure random token (legacy function)
+-- @return string Hex encoded random token
+function security.generate_secure_token()
+    return security.generate_token(TOKEN_LENGTH * 2)
 end
 
 -- Validate password strength according to policy

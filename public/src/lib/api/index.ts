@@ -20,6 +20,17 @@ export {
   type EventStats
 } from './events.js';
 export {
+  VolunteersApi,
+  type Volunteer,
+  type VolunteerFormData,
+  type VolunteerSearchParams,
+  type VolunteerFilters,
+  type VolunteerListResponse,
+  type VolunteerStatus,
+  type VolunteerHoursReport,
+  type VolunteerHistory
+} from './volunteers.js';
+export {
   AttendanceApi,
   type AttendanceRecord as ApiAttendanceRecord,
   type AttendanceRecordData,

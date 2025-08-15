@@ -20,6 +20,15 @@ export {
 export type { MembersState } from './members.js';
 
 export {
+  volunteers,
+  isVolunteersLoading,
+  hasVolunteerError,
+  volunteersPagination,
+  volunteersFiltersActive
+} from './volunteers.js';
+export type { VolunteersState } from './volunteers.js';
+
+export {
   default as events,
   eventsList,
   selectedEvent,
