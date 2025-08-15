@@ -228,7 +228,7 @@ function ErrorHandler.handle_error(client, error, context)
   if error_info.status_code >= 500 then
     log.error("Server error occurred", log_data)
   elseif error_info.status_code >= 400 then
-    log.warn("Client error occurred", log_data)
+    log.info("Client error occurred", log_data)
   else
     log.info("Error handled", log_data)
   end
