@@ -275,14 +275,6 @@ function RequestValidator.create_validator(schema, options)
     params._validated = true
     params._validation_schema = schema
     
--- Helper function to get table keys (replaces vim.tbl_keys)
-local function get_table_keys(t)
-  local keys = {}
-  for k, _ in pairs(t) do
-    table.insert(keys, k)
-  end
-  return keys
-end
 
     log.debug("Request validation passed", {
       request_id = request_id,
