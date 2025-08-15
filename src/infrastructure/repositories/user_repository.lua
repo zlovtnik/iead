@@ -108,11 +108,11 @@ end
 function UserRepository:update(conditions, data)
   -- Hash password if provided
   if data.password then
-    local hashed_password, hash_err = security.hash_password(data.password)
-    if not hashed_password then
-      return nil, "Failed to hash password: " .. (hash_err or "unknown error")
+    local ok, hashed_password_or_err = pcall(security.hash_password, data.password)
+    if not ok then
+      return nil, "Failed to hash password: " .. hashed_password_or_err
     end
-    data.password = hashed_password
+    data.password = hashed_password_or_err
   end
   
   return self.base:update(conditions, data)
@@ -192,7 +192,11 @@ function UserRepository:search(query, options)
     }
   end
   
-  options.conditions = search_conditions
+  -- Merge search_conditions into options.conditions to preserve existing filters
+  for key, value in pairs(search_conditions) do
+    options.conditions[key] = value
+  end
+  
   return self:find_all(options)
 end
 
