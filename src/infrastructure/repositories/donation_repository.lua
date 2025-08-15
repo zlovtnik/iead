@@ -303,14 +303,11 @@ function DonationRepository:get_yearly_summary(year)
   return self:get_stats_by_date_range(start_date, end_date)
 end
 
--- Search donations with member information
-function DonationRepository:search_with_member_info(query, options)
+-- Private helper to build member search conditions
+function DonationRepository:_build_member_search_conditions(query, options)
   options = options or {}
   
-  local search_query = [[
-    SELECT d.*, m.first_name, m.last_name, m.email
-    FROM donations d
-    LEFT JOIN members m ON d.member_id = m.id
+  local where_clause = [[
     WHERE (m.first_name LIKE ? OR m.last_name LIKE ? OR m.email LIKE ? 
            OR d.category LIKE ? OR d.notes LIKE ?)
   ]]
@@ -321,13 +318,27 @@ function DonationRepository:search_with_member_info(query, options)
   -- Add additional conditions
   if options.conditions then
     for field, value in pairs(options.conditions) do
-      search_query = search_query .. " AND d." .. field .. " = ?"
+      where_clause = where_clause .. " AND d." .. field .. " = ?"
       table.insert(params, value)
     end
   end
   
+  return where_clause, params
+end
+
+-- Search donations with member information
+function DonationRepository:search_with_member_info(query, options)
+  local search_query = [[
+    SELECT d.*, m.first_name, m.last_name, m.email
+    FROM donations d
+    LEFT JOIN members m ON d.member_id = m.id
+  ]]
+  
+  local where_clause, params = self:_build_member_search_conditions(query, options)
+  search_query = search_query .. where_clause
+  
   -- Add ordering
-  if options.order_by then
+  if options and options.order_by then
     local direction = options.order_direction or "ASC"
     search_query = search_query .. " ORDER BY d." .. options.order_by .. " " .. direction
   else
@@ -335,7 +346,7 @@ function DonationRepository:search_with_member_info(query, options)
   end
   
   -- Add pagination
-  if options.limit then
+  if options and options.limit then
     search_query = search_query .. " LIMIT ?"
     table.insert(params, options.limit)
     
@@ -346,6 +357,30 @@ function DonationRepository:search_with_member_info(query, options)
   end
   
   return self.base:execute_query(search_query, params)
+end
+
+-- Alias for backward compatibility
+function DonationRepository:search_with_member_details(query, options)
+  return self:search_with_member_info(query, options)
+end
+
+-- Count search results for donations with member information (for pagination)
+function DonationRepository:count_search_with_member_details(query, options)
+  local count_query = [[
+    SELECT COUNT(*) as count
+    FROM donations d
+    LEFT JOIN members m ON d.member_id = m.id
+  ]]
+  
+  local where_clause, params = self:_build_member_search_conditions(query, options)
+  count_query = count_query .. where_clause
+  
+  local result, err = self.base:execute_query_one(count_query, params)
+  if not result then
+    return nil, err
+  end
+  
+  return tonumber(result.count)
 end
 
 -- Get anonymous donations

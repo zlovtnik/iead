@@ -5,6 +5,15 @@ local ApiMiddleware = require("src.application.middlewares.api_middleware")
 local MemberRepository = require("src.infrastructure.repositories.member_repository")
 local log = require("src.utils.log")
 
+-- Helper function to get table keys
+local function get_table_keys(t)
+  local keys = {}
+  for k, _ in pairs(t) do
+    table.insert(keys, k)
+  end
+  return keys
+end
+
 local ExampleController = {}
 
 -- Create repository instance
@@ -46,10 +55,17 @@ function ExampleController.index(client, params)
       })
     end
     
+    -- Get total count for search results
+    local total_count, count_err = member_repo:count_search(params.search, {conditions = options.conditions})
+    if not total_count then
+      -- Fallback to result count if search count fails
+      total_count = #members
+    end
+    
     return params.send_success(members, "Members search completed successfully", nil, {
       page = page,
       per_page = per_page,
-      total_count = nil -- Search doesn't provide total count
+      total_count = total_count
     })
   end
   
@@ -89,7 +105,7 @@ function ExampleController.show(client, params)
   local member, err = member_repo:find_by_id(tonumber(member_id))
   
   if not member then
-    if err and string.find(err:lower(), "not found") then
+    if err and type(err) == "string" and string.find(err:lower(), "not found") then
       return params.send_not_found("Member")
     else
       return params.handle_error({
@@ -132,7 +148,7 @@ function ExampleController.create(client, params)
   
   if not member then
     -- Check for common errors
-    if err and string.find(err:lower(), "unique constraint") then
+    if err and type(err) == "string" and string.find(err:lower(), "unique constraint") then
       return params.handle_error({
         message = "A member with this email already exists",
         code = "EMAIL_ALREADY_EXISTS",
@@ -197,7 +213,7 @@ function ExampleController.update(client, params)
   local updated_member, err = member_repo:update(tonumber(member_id), update_data)
   
   if not updated_member then
-    if err and string.find(err:lower(), "unique constraint") then
+    if err and type(err) == "string" and string.find(err:lower(), "unique constraint") then
       return params.handle_error({
         message = "A member with this email already exists",
         code = "EMAIL_ALREADY_EXISTS",
@@ -212,15 +228,6 @@ function ExampleController.update(client, params)
     end
   end
   
--- Helper function to get table keys
-local function get_table_keys(t)
-  local keys = {}
-  for k, _ in pairs(t) do
-    table.insert(keys, k)
-  end
-  return keys
-end
-
   log.info("Member updated successfully", {
     request_id = params.request_id,
     member_id = member_id,

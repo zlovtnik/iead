@@ -53,6 +53,16 @@ local function validate_donation_data(data)
   return #errors == 0, errors
 end
 
+-- Helper function to resolve total count for search results
+local function resolve_total_count(repo, query, options, results)
+  local total_count, count_err = repo:count_search_with_member_details(query, {conditions = options.conditions})
+  if not total_count then
+    -- Fallback to result count if search count fails
+    total_count = #results
+  end
+  return total_count
+end
+
 -- Get all donations with pagination and filtering
 function DonationController.get_all()
   local args = ngx.req.get_uri_args()
@@ -108,7 +118,11 @@ function DonationController.get_all()
         success = false,
         error = "Search failed: " .. (search_err or "Unknown error")
       })
+      return
     end
+    
+    -- Get total count for search results
+    local total_count = resolve_total_count(donation_repo, args.search, options, search_results)
     
     send_json_response(200, {
       success = true,
@@ -116,9 +130,13 @@ function DonationController.get_all()
       pagination = {
         page = options.page,
         per_page = options.per_page,
-        has_more = #search_results == options.per_page
+        total_count = total_count,
+        total_pages = math.ceil(total_count / options.per_page),
+        has_next = (options.page * options.per_page) < total_count,
+        has_previous = options.page > 1
       }
     })
+    return
   end
   
   -- Regular paginated listing
@@ -584,7 +602,11 @@ function DonationController.search()
       success = false,
       error = "Search failed: " .. (err or "Unknown error")
     })
+    return
   end
+  
+  -- Get total count for search results
+  local total_count = resolve_total_count(donation_repo, query, options, results)
   
   send_json_response(200, {
     success = true,
@@ -592,7 +614,10 @@ function DonationController.search()
     pagination = {
       page = options.page,
       per_page = options.per_page,
-      has_more = #results == options.per_page
+      total_count = total_count,
+      total_pages = math.ceil(total_count / options.per_page),
+      has_next = (options.page * options.per_page) < total_count,
+      has_previous = options.page > 1
     }
   })
 end

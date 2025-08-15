@@ -1,5 +1,10 @@
 -- src/application/middlewares/api_versioning.lua
 -- API versioning middleware to handle multiple API versions
+--
+-- OBSERVABILITY NOTES:
+-- - Unsupported version requests are logged at info level (previously warn)
+-- - Optional metrics collection available via ngx.shared.metrics (requires lua_shared_dict configuration)
+-- - Alerting should prefer metrics over log-based monitoring for version tracking
 
 local ApiResponse = require("src.application.middlewares.api_response")
 local log = require("src.utils.log")
@@ -156,11 +161,21 @@ function ApiVersioning.middleware()
     local is_valid, version = validate_version(requested_version)
     
     if not is_valid then
-      log.warn("Unsupported API version requested", {
+      -- NOTE: Previously logged at warn level. If alerting rules depend on warn-level logs,
+      -- they should be updated to monitor info level or preferably use metrics instead.
+      log.info("Unsupported API version requested", {
         request_id = request_id,
         requested_version = requested_version,
+        request_path = ngx.var.uri,
         supported_versions = SUPPORTED_VERSIONS
       })
+      
+      -- Optional: Increment counter metric for observability (low cardinality)
+      -- This provides better alerting than log-based monitoring
+      -- if ngx.shared.metrics then
+      --   local counter_key = "unsupported_version_requests:" .. (requested_version or "unknown")
+      --   ngx.shared.metrics:incr(counter_key, 1, 0)
+      -- end
       
       if params.handle_error then
         params.handle_error({

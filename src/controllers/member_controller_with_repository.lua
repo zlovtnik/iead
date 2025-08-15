@@ -76,6 +76,14 @@ function MemberController.get_all()
         success = false,
         error = "Search failed: " .. (search_err or "Unknown error")
       })
+      return
+    end
+    
+    -- Get total count for search results
+    local total_count, count_err = member_repo:count_search(args.search, {conditions = options.conditions})
+    if not total_count then
+      -- Fallback to result count if search count fails
+      total_count = #search_results
     end
     
     send_json_response(200, {
@@ -84,9 +92,13 @@ function MemberController.get_all()
       pagination = {
         page = options.page,
         per_page = options.per_page,
-        has_more = #search_results == options.per_page
+        total_count = total_count,
+        total_pages = math.ceil(total_count / options.per_page),
+        has_next = (options.page * options.per_page) < total_count,
+        has_previous = options.page > 1
       }
     })
+    return
   end
   
   -- Regular paginated listing
