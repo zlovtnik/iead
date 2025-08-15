@@ -41,9 +41,9 @@ local function parse_boolean(value)
   -- Handle string values
   if type(value) == "string" then
     local lower = string.lower(value)
-    if lower == "true" or lower == "1" then
+    if lower == "true" or lower == "1" or lower == "yes" then
       return 1
-    elseif lower == "false" or lower == "0" then
+    elseif lower == "false" or lower == "0" or lower == "no" then
       return 0
     else
       return nil -- unparseable

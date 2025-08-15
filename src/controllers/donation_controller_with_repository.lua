@@ -28,8 +28,8 @@ local function validate_donation_data(data)
     table.insert(errors, "amount must be greater than 0")
   end
   
-  if not data.donation_type or data.donation_type == "" then
-    table.insert(errors, "donation_type is required")
+  if not data.category or data.category == "" then
+    table.insert(errors, "category is required")
   end
   
   -- Validate date format if provided
@@ -67,9 +67,9 @@ function DonationController.get_all()
     options.conditions.member_id = tonumber(args.member_id)
   end
   
-  if args.donation_type then
+  if args.category then
     options.conditions = options.conditions or {}
-    options.conditions.donation_type = args.donation_type
+    options.conditions.category = args.category
   end
   
   if args.payment_method then
@@ -248,7 +248,7 @@ function DonationController.update()
   end
   
   -- Validate data if key fields are provided
-  if data.amount or data.donation_type then
+  if data.amount or data.category then
     local is_valid, validation_errors = validate_donation_data(data)
     if not is_valid then
       send_json_response(400, {
@@ -492,12 +492,12 @@ function DonationController.get_trends()
 end
 
 -- Get donations by type
-function DonationController.get_by_type()
-  local donation_type = ngx.var.donation_type
-  if not donation_type then
+function DonationController.get_by_category()
+  local category = ngx.var.category
+  if not category then
     send_json_response(400, {
       success = false,
-      error = "Donation type is required"
+      error = "Category is required"
     })
   end
   
@@ -509,11 +509,11 @@ function DonationController.get_by_type()
     order_direction = args.order_direction or "DESC"
   }
   
-  local donations, err = donation_repo:find_by_type(donation_type, options)
+  local donations, err = donation_repo:find_by_category(category, options)
   if not donations then
     send_json_response(500, {
       success = false,
-      error = "Failed to fetch donations by type: " .. (err or "Unknown error")
+      error = "Failed to fetch donations by category: " .. (err or "Unknown error")
     })
   end
   
