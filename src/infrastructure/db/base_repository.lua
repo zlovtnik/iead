@@ -112,20 +112,28 @@ function BaseRepository:build_where_clause(conditions)
   for field, value in pairs(conditions) do
     if type(value) == "table" and value.operator then
       -- Handle complex conditions like {operator = "LIKE", value = "%search%"}
-      table.insert(where_parts, field .. " " .. value.operator .. " ?")
-      table.insert(params, value.value)
-    elseif type(value) == "table" and value.in then
+      if value.operator == "=" and value.value == nil then
+        table.insert(where_parts, field .. " IS NULL")
+      else
+        table.insert(where_parts, field .. " " .. value.operator .. " ?")
+        table.insert(params, value.value)
+      end
+    elseif type(value) == "table" and value["in"] then
       -- Handle IN conditions like {in = {1, 2, 3}}
       local placeholders = {}
-      for _, v in ipairs(value.in) do
+      for _, v in ipairs(value["in"]) do
         table.insert(placeholders, "?")
         table.insert(params, v)
       end
       table.insert(where_parts, field .. " IN (" .. table.concat(placeholders, ",") .. ")")
     else
       -- Simple equality condition
-      table.insert(where_parts, field .. " = ?")
-      table.insert(params, value)
+      if value == nil then
+        table.insert(where_parts, field .. " IS NULL")
+      else
+        table.insert(where_parts, field .. " = ?")
+        table.insert(params, value)
+      end
     end
   end
   
