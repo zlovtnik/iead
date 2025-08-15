@@ -28,21 +28,32 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Setup Node.js
+
+    # Setup Node.js only for frontend (public)
+    - name: Setup Node.js (Frontend)
       uses: actions/setup-node@v4
       with:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
         cache-dependency-path: public/package-lock.json
 
+    # Setup Deno for backend
+    - name: Setup Deno
+      uses: denoland/setup-deno@v1
+      with:
+        deno-version: v1.x
+
     - name: Setup Lua Environment
       uses: leafo/gh-actions-lua@v10
       with:
         luaVersion: ${{ env.LUA_VERSION }}
 
-    - name: Install Dependencies
+    - name: Install Frontend Dependencies
       run: |
         cd public && npm ci
+
+    - name: Install Backend Dependencies
+      run: |
         sudo apt-get update
         sudo apt-get install -y luarocks sqlite3
         luarocks install luacheck
