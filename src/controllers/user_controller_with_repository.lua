@@ -25,11 +25,48 @@ end
 -- Helper function to send error response
 local function send_error_response(client, status, message, code)
   json_utils.send_json_response(client, status, {
-    error = http_status_messages[status] or "Error",
+    error = "Error",
     message = message,
     code = code or "UNKNOWN_ERROR",
     timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
   })
+end
+
+-- Helper function to parse boolean values consistently
+local function parse_boolean(value)
+  if value == nil then
+    return nil
+  end
+  
+  -- Handle string values
+  if type(value) == "string" then
+    local lower = string.lower(value)
+    if lower == "true" or lower == "1" then
+      return 1
+    elseif lower == "false" or lower == "0" then
+      return 0
+    else
+      return nil -- unparseable
+    end
+  end
+  
+  -- Handle numeric values
+  if type(value) == "number" then
+    if value == 1 then
+      return 1
+    elseif value == 0 then
+      return 0
+    else
+      return nil -- unparseable
+    end
+  end
+  
+  -- Handle boolean values
+  if type(value) == "boolean" then
+    return value and 1 or 0
+  end
+  
+  return nil -- unparseable
 end
 
 -- List all users with pagination and filtering
@@ -46,8 +83,9 @@ function UserController.list_users(client, params)
   if params.role then
     conditions.role = params.role
   end
-  if params.is_active ~= nil then
-    conditions.is_active = tonumber(params.is_active) or 0
+  local parsed_is_active = parse_boolean(params.is_active)
+  if parsed_is_active ~= nil then
+    conditions.is_active = parsed_is_active
   end
   
   -- Parse search parameter
@@ -190,7 +228,7 @@ function UserController.create_user(client, params)
     password = params.password,
     role = params.role,
     member_id = tonumber(params.member_id),
-    is_active = params.is_active ~= nil and (params.is_active and 1 or 0) or 1
+    is_active = parse_boolean(params.is_active) or 1
   }
   
   -- Create user
@@ -283,8 +321,9 @@ function UserController.update_user(client, params, user_id)
     update_data.member_id = tonumber(params.member_id)
   end
   
-  if params.is_active ~= nil then
-    update_data.is_active = params.is_active and 1 or 0
+  local parsed_is_active = parse_boolean(params.is_active)
+  if parsed_is_active ~= nil then
+    update_data.is_active = parsed_is_active
   end
   
   -- Only update if there are changes
