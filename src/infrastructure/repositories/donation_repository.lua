@@ -348,6 +348,42 @@ function DonationRepository:search_with_member_info(query, options)
   return self.base:execute_query(search_query, params)
 end
 
+-- Alias for backward compatibility
+function DonationRepository:search_with_member_details(query, options)
+  return self:search_with_member_info(query, options)
+end
+
+-- Count search results for donations with member information (for pagination)
+function DonationRepository:count_search_with_member_details(query, options)
+  options = options or {}
+  
+  local count_query = [[
+    SELECT COUNT(*) as count
+    FROM donations d
+    LEFT JOIN members m ON d.member_id = m.id
+    WHERE (m.first_name LIKE ? OR m.last_name LIKE ? OR m.email LIKE ? 
+           OR d.category LIKE ? OR d.notes LIKE ?)
+  ]]
+  
+  local search_param = "%" .. query .. "%"
+  local params = {search_param, search_param, search_param, search_param, search_param}
+  
+  -- Add additional conditions
+  if options.conditions then
+    for field, value in pairs(options.conditions) do
+      count_query = count_query .. " AND d." .. field .. " = ?"
+      table.insert(params, value)
+    end
+  end
+  
+  local result, err = self.base:execute_query_one(count_query, params)
+  if not result then
+    return nil, err
+  end
+  
+  return tonumber(result.count)
+end
+
 -- Get anonymous donations
 function DonationRepository:find_anonymous_donations(options)
   options = options or {}

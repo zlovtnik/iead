@@ -201,6 +201,53 @@ function MemberRepository:search(query, options)
   return self.base:execute_query(search_query, params)
 end
 
+-- Count search results for members by name or email (for pagination)
+function MemberRepository:count_search(query, options)
+  options = options or {}
+  
+  -- Create a custom count query for OR conditions (searching name OR email)
+  local count_query = [[
+    SELECT COUNT(*) as count FROM members 
+    WHERE (first_name LIKE ? OR last_name LIKE ? OR email LIKE ?)
+  ]]
+  
+  -- Add additional conditions if provided
+  local params = {"%" .. query .. "%", "%" .. query .. "%", "%" .. query .. "%"}
+  
+  if options.conditions then
+    -- Define allowed condition fields
+    local allowed_fields = {
+      ["first_name"] = true,
+      ["last_name"] = true,
+      ["email"] = true,
+      ["phone"] = true,
+      ["address"] = true,
+      ["is_active"] = true,
+      ["membership_date"] = true,
+      ["date_of_birth"] = true
+    }
+    
+    local where_parts = {}
+    for field, value in pairs(options.conditions) do
+      if allowed_fields[field] then
+        table.insert(where_parts, field .. " = ?")
+        table.insert(params, value)
+      end
+    end
+    
+    if #where_parts > 0 then
+      count_query = count_query .. " AND " .. table.concat(where_parts, " AND ")
+    end
+  end
+  
+  local result, err = self.base:execute_query_one(count_query, params)
+  if not result then
+    return nil, err
+  end
+  
+  return tonumber(result.count)
+end
+
 -- Get members by birth month (for birthday reminders)
 function MemberRepository:find_by_birth_month(month, options)
   options = options or {}

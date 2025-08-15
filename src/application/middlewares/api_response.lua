@@ -102,7 +102,7 @@ end
 -- @param data array The paginated data
 -- @param page number Current page number
 -- @param per_page number Items per page
--- @param total_count number Total number of items (optional)
+-- @param total_count number Total number of items (required for accurate pagination)
 -- @param message string Optional message
 -- @param meta table Optional metadata
 -- @return table Standardized paginated response
@@ -111,13 +111,17 @@ function ApiResponse.paginated(data, page, per_page, total_count, message, meta)
     current_page = page,
     per_page = per_page,
     total_items = total_count,
-    has_next = data and #data == per_page,
     has_previous = page > 1
   }
   
   if total_count then
     pagination.total_pages = math.ceil(total_count / per_page)
-    pagination.has_next = page < pagination.total_pages
+    pagination.has_next = (page * per_page) < total_count
+  else
+    -- Fallback for cases where total_count is not provided
+    -- This is less accurate and should be avoided when possible
+    pagination.has_next = data and #data == per_page
+    pagination.total_pages = nil
   end
   
   return ApiResponse.success(data, message, meta, pagination)

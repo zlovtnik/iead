@@ -290,7 +290,7 @@ function ApiMiddleware.debug(options)
     
     -- Log request details
     if options.log_requests ~= false then
-      log.debug("API Request", {
+      log.info("API Request", {
         request_id = request_id,
         method = client.method,
         path = client.path,
@@ -305,7 +305,7 @@ function ApiMiddleware.debug(options)
       local original_send_success = params.send_success
       if original_send_success then
         params.send_success = function(...)
-          log.debug("API Success Response", {
+          log.info("API Success Response", {
             request_id = request_id,
             method = client.method,
             path = client.path

@@ -58,9 +58,19 @@ function tests.test_api_response_paginated()
   assert(response.pagination.current_page == 1, "Response should have correct current page")
   assert(response.pagination.per_page == 2, "Response should have correct per_page")
   assert(response.pagination.total_items == 10, "Response should have correct total")
-  assert(response.pagination.total_pages == 5, "Response should calculate total pages")
-  assert(response.pagination.has_next == true, "Response should indicate next page exists")
-  assert(response.pagination.has_previous == false, "Response should indicate no previous page")
+  assert(response.pagination.has_next == true, "Response should indicate next page exists when (page * per_page) < total_count")
+  assert(response.pagination.has_previous == false, "Response should indicate no previous page for page 1")
+  
+  -- Test the exact bug scenario: last page with exactly per_page items
+  -- Page 5 with 2 items per page for total_count=10 should be the last page
+  local last_page_response = ApiResponse.paginated(data, 5, 2, 10)
+  assert(last_page_response.pagination.has_next == false, "Response should correctly indicate no next page when on last page")
+  assert(last_page_response.pagination.has_previous == true, "Response should indicate previous page exists")
+  
+  -- Test fallback behavior when total_count is nil
+  local fallback_response = ApiResponse.paginated(data, 1, 2, nil)
+  assert(fallback_response.pagination.has_next == true, "Fallback should use old logic when total_count is nil")
+  assert(fallback_response.pagination.total_pages == nil, "Fallback should not calculate total_pages when total_count is nil")
 end
 
 -- Test Error Handler

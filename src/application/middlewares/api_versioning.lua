@@ -156,7 +156,7 @@ function ApiVersioning.middleware()
     local is_valid, version = validate_version(requested_version)
     
     if not is_valid then
-      log.warn("Unsupported API version requested", {
+      log.info("Unsupported API version requested", {
         request_id = request_id,
         requested_version = requested_version,
         supported_versions = SUPPORTED_VERSIONS
