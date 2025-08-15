@@ -71,6 +71,21 @@ function tests.test_api_response_paginated()
   local fallback_response = ApiResponse.paginated(data, 1, 2, nil)
   assert(fallback_response.pagination.has_next == true, "Fallback should use old logic when total_count is nil")
   assert(fallback_response.pagination.total_pages == nil, "Fallback should not calculate total_pages when total_count is nil")
+  
+  -- Test safety improvements
+  -- Test division by zero prevention
+  local safe_response1 = ApiResponse.paginated(data, 1, 0, 10)
+  assert(safe_response1.pagination.per_page == 1, "Should normalize per_page=0 to 1")
+  assert(safe_response1.pagination.total_pages == 10, "Should calculate total_pages safely with normalized pagesize")
+  
+  -- Test negative per_page normalization
+  local safe_response2 = ApiResponse.paginated(data, 1, -5, 10)
+  assert(safe_response2.pagination.per_page == 1, "Should normalize negative per_page to 1")
+  
+  -- Test has_next boolean safety with nil data
+  local safe_response3 = ApiResponse.paginated(nil, 1, 2, nil)
+  assert(type(safe_response3.pagination.has_next) == "boolean", "has_next should always be boolean")
+  assert(safe_response3.pagination.has_next == false, "has_next should be false for nil data")
 end
 
 -- Test Error Handler

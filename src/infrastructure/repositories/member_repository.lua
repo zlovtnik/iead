@@ -3,6 +3,18 @@
 
 local BaseRepository = require("src.infrastructure.db.base_repository")
 
+-- Allowed fields for member filtering conditions
+local ALLOWED_MEMBER_FILTER_FIELDS = {
+  ["first_name"] = true,
+  ["last_name"] = true,
+  ["email"] = true,
+  ["phone"] = true,
+  ["address"] = true,
+  ["date_of_birth"] = true,
+  ["membership_date"] = true,
+  ["is_active"] = true
+}
+
 local MemberRepository = {}
 MemberRepository.__index = MemberRepository
 
@@ -124,6 +136,10 @@ end
 function MemberRepository:search(query, options)
   options = options or {}
   
+  -- Normalize query to prevent nil concatenation
+  local q = query or ""
+  local pattern = "%" .. q .. "%"
+  
   -- Create a custom query for OR conditions (searching name OR email)
   local search_query = [[
     SELECT * FROM members 
@@ -131,24 +147,12 @@ function MemberRepository:search(query, options)
   ]]
   
   -- Add additional conditions if provided
-  local params = {"%" .. query .. "%", "%" .. query .. "%", "%" .. query .. "%"}
+  local params = {pattern, pattern, pattern}
   
   if options.conditions then
-    -- Define allowed condition fields
-    local allowed_fields = {
-      ["first_name"] = true,
-      ["last_name"] = true,
-      ["email"] = true,
-      ["phone"] = true,
-      ["address"] = true,
-      ["date_of_birth"] = true,
-      ["membership_date"] = true,
-      ["is_active"] = true
-    }
-    
     local where_parts = {}
     for field, value in pairs(options.conditions) do
-      if not allowed_fields[field] then
+      if not ALLOWED_MEMBER_FILTER_FIELDS[field] then
         return nil, "Invalid condition field: " .. field
       end
       table.insert(where_parts, field .. " = ?")
@@ -205,6 +209,10 @@ end
 function MemberRepository:count_search(query, options)
   options = options or {}
   
+  -- Normalize query to prevent nil concatenation
+  local q = query or ""
+  local pattern = "%" .. q .. "%"
+  
   -- Create a custom count query for OR conditions (searching name OR email)
   local count_query = [[
     SELECT COUNT(*) as count FROM members 
@@ -212,24 +220,12 @@ function MemberRepository:count_search(query, options)
   ]]
   
   -- Add additional conditions if provided
-  local params = {"%" .. query .. "%", "%" .. query .. "%", "%" .. query .. "%"}
+  local params = {pattern, pattern, pattern}
   
   if options.conditions then
-    -- Define allowed condition fields
-    local allowed_fields = {
-      ["first_name"] = true,
-      ["last_name"] = true,
-      ["email"] = true,
-      ["phone"] = true,
-      ["address"] = true,
-      ["is_active"] = true,
-      ["membership_date"] = true,
-      ["date_of_birth"] = true
-    }
-    
     local where_parts = {}
     for field, value in pairs(options.conditions) do
-      if allowed_fields[field] then
+      if ALLOWED_MEMBER_FILTER_FIELDS[field] then
         table.insert(where_parts, field .. " = ?")
         table.insert(params, value)
       end

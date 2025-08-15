@@ -5,6 +5,15 @@ local ApiMiddleware = require("src.application.middlewares.api_middleware")
 local MemberRepository = require("src.infrastructure.repositories.member_repository")
 local log = require("src.utils.log")
 
+-- Helper function to get table keys
+local function get_table_keys(t)
+  local keys = {}
+  for k, _ in pairs(t) do
+    table.insert(keys, k)
+  end
+  return keys
+end
+
 local ExampleController = {}
 
 -- Create repository instance
@@ -219,15 +228,6 @@ function ExampleController.update(client, params)
     end
   end
   
--- Helper function to get table keys
-local function get_table_keys(t)
-  local keys = {}
-  for k, _ in pairs(t) do
-    table.insert(keys, k)
-  end
-  return keys
-end
-
   log.info("Member updated successfully", {
     request_id = params.request_id,
     member_id = member_id,
