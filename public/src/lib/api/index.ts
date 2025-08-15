@@ -16,14 +16,25 @@ export {
   type EventSearchParams,
   type EventFilters,
   type EventListResponse,
-  type AttendanceRecord,
   type VolunteerAssignment,
   type EventStats
 } from './events.js';
+export {
+  AttendanceApi,
+  type AttendanceRecord as ApiAttendanceRecord,
+  type AttendanceRecordData,
+  type BulkAttendanceData,
+  type AttendanceSearchParams,
+  type AttendanceFilters,
+  type AttendanceListResponse,
+  type MemberAttendanceStats,
+  type EventAttendanceStats,
+  type AttendanceReport
+} from './attendance.js';
 export { 
   reportsApi,
   type DashboardMetrics,
-  type AttendanceReport,
+  type AttendanceReport as ReportsAttendanceReport,
   type DonationSummary,
   type FinancialReport,
   type VolunteerReport,

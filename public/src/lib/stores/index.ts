@@ -39,3 +39,19 @@ export {
   isAnyEventOperation
 } from './events.js';
 export type { EventsState } from './events.js';
+
+export {
+  attendanceStore,
+  isLoadingAttendance,
+  attendanceError,
+  attendanceRecords,
+  currentAttendanceRecord,
+  selectedAttendanceRecords,
+  hasSelectedRecords,
+  attendancePagination,
+  memberAttendanceStats,
+  eventAttendanceStats,
+  attendanceActions,
+  startAutoRefresh,
+  stopAutoRefresh
+} from './attendance.js';
