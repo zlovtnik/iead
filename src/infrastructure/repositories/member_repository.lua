@@ -169,23 +169,39 @@ end
 function MemberRepository:find_by_birth_month(month, options)
   options = options or {}
   
+  -- Define allowed column names mapping to safe SQL expressions
+  local allowed = {
+    ["first_name"] = "first_name",
+    ["last_name"] = "last_name", 
+    ["date_of_birth"] = "date_of_birth",
+    ["birth_month"] = "strftime('%m',date_of_birth)"
+  }
+  
   local query = "SELECT * FROM members WHERE strftime('%m', date_of_birth) = ?"
   local params = {string.format("%02d", month)}
   
-  -- Add additional conditions
+  -- Add additional conditions (only for allowed columns)
   if options.conditions then
     for field, value in pairs(options.conditions) do
-      query = query .. " AND " .. field .. " = ?"
-      table.insert(params, value)
+      if allowed[field] then
+        query = query .. " AND " .. allowed[field] .. " = ?"
+        table.insert(params, value)
+      end
     end
   end
   
-  -- Add ordering
-  if options.order_by then
-    local direction = options.order_direction or "ASC"
-    query = query .. " ORDER BY " .. options.order_by .. " " .. direction
+  -- Add ordering with validation
+  if options.order_by and allowed[options.order_by] then
+    local direction = "ASC"
+    if options.order_direction then
+      local lower_dir = string.lower(options.order_direction)
+      if lower_dir == "asc" or lower_dir == "desc" then
+        direction = string.upper(lower_dir)
+      end
+    end
+    query = query .. " ORDER BY " .. allowed[options.order_by] .. " " .. direction
   else
-    -- Default order by birth date
+    -- Default order by birth date (safe expression)
     query = query .. " ORDER BY strftime('%d', date_of_birth)"
   end
   
