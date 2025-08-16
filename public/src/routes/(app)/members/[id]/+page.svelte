@@ -3,7 +3,7 @@
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { members, type Member } from '$lib/stores/members.js';
-  import { authStore } from '$lib/stores/auth.js';
+  import { user } from '$lib/stores/auth.js';
   import { hasPermission } from '$lib/utils/permissions.js';
   import Button from '$lib/components/ui/Button.svelte';
   import Modal from '$lib/components/ui/Modal.svelte';
@@ -17,12 +17,6 @@
   let error = $state<string | null>(null);
   let showDeleteModal = $state(false);
   let isDeleting = $state(false);
-  let user = $state(null);
-
-  // Subscribe to auth store
-  authStore.subscribe((state) => {
-    user = state.user;
-  });
 
   // Subscribe to members store
   members.subscribe((state) => {

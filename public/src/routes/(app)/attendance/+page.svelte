@@ -1,4 +1,4 @@
-&lt;script lang="ts"&gt;
+<script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
@@ -21,7 +21,7 @@
     stopAutoRefresh
   } from '$lib/stores/attendance.js';
   import { user } from '$lib/stores/auth.js';
-  import { uiStore } from '$lib/stores/ui.js';
+  import { toastStore } from '$lib/stores/ui.js';
   import type { AttendanceRecord, AttendanceSearchParams, AttendanceFilters } from '$lib/api/attendance.js';
   import { hasPermission } from '$lib/utils/permissions.js';
 
@@ -117,13 +117,13 @@
   }
 
   // Handle page change
-  async function handlePageChange(event: CustomEvent&lt;{ page: number }&gt;) {
+  async function handlePageChange(event: CustomEvent<{ page: number }>) {
     await attendanceActions.changePage(event.detail.page);
     updateUrl();
   }
 
   // Handle sorting
-  async function handleSort(event: CustomEvent&lt;{ column: string; direction: 'asc' | 'desc' }&gt;) {
+  async function handleSort(event: CustomEvent<{ column: string; direction: 'asc' | 'desc' }>) {
     await attendanceActions.changeSorting(event.detail.column as any, event.detail.direction);
     updateUrl();
   }
@@ -151,14 +151,14 @@
 
     try {
       await attendanceActions.deleteAttendanceRecord(recordToDelete.id);
-      uiStore.addToast({
+      toastStore.add({
         type: 'success',
         message: 'Attendance record deleted successfully'
       });
       showDeleteConfirm = false;
       recordToDelete = null;
     } catch (error: any) {
-      uiStore.addToast({
+      toastStore.add({
         type: 'error',
         message: error.message || 'Failed to delete attendance record'
       });
@@ -171,13 +171,13 @@
 
     try {
       await attendanceActions.deleteBulkAttendanceRecords([...$selectedAttendanceRecords]);
-      uiStore.addToast({
+      toastStore.add({
         type: 'success',
         message: `Deleted ${$selectedAttendanceRecords.size} attendance records`
       });
       showBulkActions = false;
     } catch (error: any) {
-      uiStore.addToast({
+      toastStore.add({
         type: 'error',
         message: error.message || 'Failed to delete attendance records'
       });
@@ -189,13 +189,13 @@
     try {
       const exportFilters = { ...filters, hasNotes: hasNotesFilter };
       await attendanceActions.exportAttendance(exportFormat, exportFilters);
-      uiStore.addToast({
+      toastStore.add({
         type: 'success',
         message: 'Attendance data exported successfully'
       });
       showExportModal = false;
     } catch (error: any) {
-      uiStore.addToast({
+      toastStore.add({
         type: 'error',
         message: error.message || 'Failed to export attendance data'
       });
@@ -211,327 +211,327 @@
   function formatDateTime(dateString: string): string {
     return new Date(dateString).toLocaleString();
   }
-&lt;/script&gt;
+</script>
 
-&lt;div class="container mx-auto p-6"&gt;
-  &lt;div class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6"&gt;
-    &lt;div&gt;
-      &lt;h1 class="text-3xl font-bold text-gray-900"&gt;Attendance Records&lt;/h1&gt;
-      &lt;p class="mt-2 text-gray-600"&gt;
+<div class="container mx-auto p-6">
+  <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900">Attendance Records</h1>
+      <p class="mt-2 text-gray-600">
         Track and manage member attendance for events
-      &lt;/p&gt;
-    &lt;/div&gt;
+      </p>
+    </div>
 
-    &lt;div class="mt-4 lg:mt-0 flex flex-wrap gap-3"&gt;
+    <div class="mt-4 lg:mt-0 flex flex-wrap gap-3">
       {#if canExportData}
-        &lt;Button
+        <Button
           variant="outline"
-          on:click={() =&gt; showExportModal = true}
-        &gt;
+          on:click={() => showExportModal = true}
+        >
           Export Data
-        &lt;/Button&gt;
+        </Button>
       {/if}
 
       {#if canManageAttendance}
-        &lt;Button
+        <Button
           href="/attendance/record"
           class="bg-blue-600 hover:bg-blue-700"
-        &gt;
+        >
           Record Attendance
-        &lt;/Button&gt;
+        </Button>
       {/if}
-    &lt;/div&gt;
-  &lt;/div&gt;
+    </div>
+  </div>
 
   {#if $attendanceError}
-    &lt;Toast type="error" message={$attendanceError} show={true} /&gt;
+    <Toast type="error" message={$attendanceError} show={true} />
   {/if}
 
-  &lt;!-- Search and Filters --&gt;
-  &lt;div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6"&gt;
-    &lt;div class="flex flex-col lg:flex-row lg:items-center gap-4"&gt;
-      &lt;div class="flex-1"&gt;
-        &lt;Input
+  <!-- Search and Filters -->
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+    <div class="flex flex-col lg:flex-row lg:items-center gap-4">
+      <div class="flex-1">
+        <Input
           type="text"
           placeholder="Search by member name, event title, or notes..."
           bind:value={searchQuery}
-          on:keydown={(e) =&gt; e.key === 'Enter' && handleSearch()}
-        /&gt;
-      &lt;/div&gt;
+          on:keydown={(e) => e.key === 'Enter' && handleSearch()}
+        />
+      </div>
 
-      &lt;div class="flex gap-2"&gt;
-        &lt;Button variant="outline" on:click={() =&gt; showFilters = !showFilters}&gt;
+      <div class="flex gap-2">
+        <Button variant="outline" on:click={() => showFilters = !showFilters}>
           Filters
-        &lt;/Button&gt;
-        &lt;Button on:click={handleSearch}&gt;Search&lt;/Button&gt;
+        </Button>
+        <Button on:click={handleSearch}>Search</Button>
         {#if searchQuery || filters.startDate || filters.endDate}
-          &lt;Button variant="outline" on:click={clearSearch}&gt;Clear&lt;/Button&gt;
+          <Button variant="outline" on:click={clearSearch}>Clear</Button>
         {/if}
-      &lt;/div&gt;
-    &lt;/div&gt;
+      </div>
+    </div>
 
     {#if showFilters}
-      &lt;div class="mt-6 pt-6 border-t border-gray-200"&gt;
-        &lt;div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"&gt;
-          &lt;div&gt;
-            &lt;label for="startDate" class="block text-sm font-medium text-gray-700 mb-1"&gt;
+      <div class="mt-6 pt-6 border-t border-gray-200">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
+            <label for="startDate" class="block text-sm font-medium text-gray-700 mb-1">
               Start Date
-            &lt;/label&gt;
-            &lt;Input
+            </label>
+            <Input
               type="date"
               id="startDate"
               bind:value={filters.startDate}
-            /&gt;
-          &lt;/div&gt;
+            />
+          </div>
 
-          &lt;div&gt;
-            &lt;label for="endDate" class="block text-sm font-medium text-gray-700 mb-1"&gt;
+          <div>
+            <label for="endDate" class="block text-sm font-medium text-gray-700 mb-1">
               End Date
-            &lt;/label&gt;
-            &lt;Input
+            </label>
+            <Input
               type="date"
               id="endDate"
               bind:value={filters.endDate}
-            /&gt;
-          &lt;/div&gt;
+            />
+          </div>
 
-          &lt;div&gt;
-            &lt;label for="hasNotes" class="block text-sm font-medium text-gray-700 mb-1"&gt;
+          <div>
+            <label for="hasNotes" class="block text-sm font-medium text-gray-700 mb-1">
               Has Notes
-            &lt;/label&gt;
-            &lt;select
+            </label>
+            <select
               id="hasNotes"
               bind:value={hasNotesFilter}
               class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            &gt;
-              &lt;option value={undefined}&gt;All Records&lt;/option&gt;
-              &lt;option value={true}&gt;With Notes&lt;/option&gt;
-              &lt;option value={false}&gt;Without Notes&lt;/option&gt;
-            &lt;/select&gt;
-          &lt;/div&gt;
+            >
+              <option value={undefined}>All Records</option>
+              <option value={true}>With Notes</option>
+              <option value={false}>Without Notes</option>
+            </select>
+          </div>
 
-          &lt;div class="flex items-end"&gt;
-            &lt;Button on:click={applyFilters} class="w-full"&gt;
+          <div class="flex items-end">
+            <Button on:click={applyFilters} class="w-full">
               Apply Filters
-            &lt;/Button&gt;
-          &lt;/div&gt;
-        &lt;/div&gt;
-      &lt;/div&gt;
+            </Button>
+          </div>
+        </div>
+      </div>
     {/if}
-  &lt;/div&gt;
+  </div>
 
-  &lt;!-- Bulk Actions --&gt;
+  <!-- Bulk Actions -->
   {#if $hasSelectedRecords && canManageAttendance}
-    &lt;div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6"&gt;
-      &lt;div class="flex items-center justify-between"&gt;
-        &lt;span class="text-sm font-medium text-blue-900"&gt;
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+      <div class="flex items-center justify-between">
+        <span class="text-sm font-medium text-blue-900">
           {$selectedAttendanceRecords.size} record(s) selected
-        &lt;/span&gt;
-        &lt;div class="flex gap-2"&gt;
-          &lt;Button
+        </span>
+        <div class="flex gap-2">
+          <Button
             variant="outline"
             size="sm"
-            on:click={() =&gt; attendanceActions.deselectAllRecords()}
-          &gt;
+            on:click={() => attendanceActions.deselectAllRecords()}
+          >
             Clear Selection
-          &lt;/Button&gt;
-          &lt;Button
+          </Button>
+          <Button
             variant="destructive"
             size="sm"
-            on:click={() =&gt; showBulkActions = true}
-          &gt;
+            on:click={() => showBulkActions = true}
+          >
             Delete Selected
-          &lt;/Button&gt;
-        &lt;/div&gt;
-      &lt;/div&gt;
-    &lt;/div&gt;
+          </Button>
+        </div>
+      </div>
+    </div>
   {/if}
 
-  &lt;!-- Data Table --&gt;
+  <!-- Data Table -->
   {#if $isLoadingAttendance}
-    &lt;div class="flex justify-center py-12"&gt;
-      &lt;Loading /&gt;
-    &lt;/div&gt;
+    <div class="flex justify-center py-12">
+      <Loading />
+    </div>
   {:else}
-    &lt;DataTable
+    <DataTable
       data={$attendanceRecords}
       {columns}
       pagination={$attendancePagination}
       selectable={canManageAttendance}
       selectedItems={$selectedAttendanceRecords}
-      on:select={(e) =&gt; attendanceActions.toggleRecordSelection(e.detail)}
-      on:selectAll={() =&gt; attendanceActions.selectAllRecords()}
-      on:deselectAll={() =&gt; attendanceActions.deselectAllRecords()}
+      on:select={(e) => attendanceActions.toggleRecordSelection(e.detail)}
+      on:selectAll={() => attendanceActions.selectAllRecords()}
+      on:deselectAll={() => attendanceActions.deselectAllRecords()}
       on:pageChange={handlePageChange}
       on:sort={handleSort}
-    &gt;
-      &lt;svelte:fragment slot="cell" let:item let:column&gt;
+    >
+      <svelte:fragment slot="cell" let:item let:column>
         {#if column.key === 'attendance_date'}
-          &lt;span class="font-medium"&gt;
+          <span class="font-medium">
             {formatDate(item.attendance_date)}
-          &lt;/span&gt;
+          </span>
         {:else if column.key === 'member.name'}
-          &lt;div class="flex flex-col"&gt;
-            &lt;span class="font-medium text-gray-900"&gt;
+          <div class="flex flex-col">
+            <span class="font-medium text-gray-900">
               {item.member?.name || 'Unknown Member'}
-            &lt;/span&gt;
+            </span>
             {#if item.member?.email}
-              &lt;span class="text-sm text-gray-500"&gt;
+              <span class="text-sm text-gray-500">
                 {item.member.email}
-              &lt;/span&gt;
+              </span>
             {/if}
-          &lt;/div&gt;
+          </div>
         {:else if column.key === 'event.title'}
-          &lt;div class="flex flex-col"&gt;
-            &lt;span class="font-medium text-gray-900"&gt;
+          <div class="flex flex-col">
+            <span class="font-medium text-gray-900">
               {item.event?.title || 'Unknown Event'}
-            &lt;/span&gt;
+            </span>
             {#if item.event?.start_date}
-              &lt;span class="text-sm text-gray-500"&gt;
+              <span class="text-sm text-gray-500">
                 {formatDateTime(item.event.start_date)}
-              &lt;/span&gt;
+              </span>
             {/if}
-          &lt;/div&gt;
+          </div>
         {:else if column.key === 'event.location'}
-          &lt;span class="text-gray-600"&gt;
+          <span class="text-gray-600">
             {item.event?.location || '-'}
-          &lt;/span&gt;
+          </span>
         {:else if column.key === 'notes'}
-          &lt;span class="text-gray-600"&gt;
+          <span class="text-gray-600">
             {item.notes || '-'}
-          &lt;/span&gt;
+          </span>
         {:else if column.key === 'actions'}
-          &lt;div class="flex gap-2"&gt;
-            &lt;Button
+          <div class="flex gap-2">
+            <Button
               variant="outline"
               size="sm"
               href="/attendance/{item.id}"
-            &gt;
+            >
               View
-            &lt;/Button&gt;
+            </Button>
             {#if canManageAttendance}
-              &lt;Button
+              <Button
                 variant="outline"
                 size="sm"
                 href="/attendance/{item.id}/edit"
-              &gt;
+              >
                 Edit
-              &lt;/Button&gt;
-              &lt;Button
+              </Button>
+              <Button
                 variant="destructive"
                 size="sm"
-                on:click={() =&gt; deleteRecord(item)}
-              &gt;
+                on:click={() => deleteRecord(item)}
+              >
                 Delete
-              &lt;/Button&gt;
+              </Button>
             {/if}
-          &lt;/div&gt;
+          </div>
         {/if}
-      &lt;/svelte:fragment&gt;
+      </svelte:fragment>
 
-      &lt;svelte:fragment slot="empty"&gt;
-        &lt;div class="text-center py-12"&gt;
-          &lt;svg class="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"&gt;
-            &lt;path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"&gt;&lt;/path&gt;
-          &lt;/svg&gt;
-          &lt;h3 class="text-lg font-medium text-gray-900 mb-2"&gt;No attendance records found&lt;/h3&gt;
-          &lt;p class="text-gray-500 mb-4"&gt;
+      <svelte:fragment slot="empty">
+        <div class="text-center py-12">
+          <svg class="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+          </svg>
+          <h3 class="text-lg font-medium text-gray-900 mb-2">No attendance records found</h3>
+          <p class="text-gray-500 mb-4">
             {#if searchQuery || filters.startDate || filters.endDate}
               Try adjusting your search criteria or filters.
             {:else}
               Start by recording attendance for events.
             {/if}
-          &lt;/p&gt;
+          </p>
           {#if canManageAttendance}
-            &lt;Button href="/attendance/record"&gt;
+            <Button href="/attendance/record">
               Record Attendance
-            &lt;/Button&gt;
+            </Button>
           {/if}
-        &lt;/div&gt;
-      &lt;/svelte:fragment&gt;
-    &lt;/DataTable&gt;
+        </div>
+      </svelte:fragment>
+    </DataTable>
   {/if}
-&lt;/div&gt;
+</div>
 
-&lt;!-- Delete Confirmation Modal --&gt;
-&lt;Modal bind:show={showDeleteConfirm} title="Delete Attendance Record"&gt;
-  &lt;p class="text-gray-600 mb-6"&gt;
+<!-- Delete Confirmation Modal -->
+<Modal bind:show={showDeleteConfirm} title="Delete Attendance Record">
+  <p class="text-gray-600 mb-6">
     Are you sure you want to delete this attendance record? This action cannot be undone.
-  &lt;/p&gt;
+  </p>
   
   {#if recordToDelete}
-    &lt;div class="bg-gray-50 rounded-lg p-4 mb-6"&gt;
-      &lt;div class="grid grid-cols-2 gap-4 text-sm"&gt;
-        &lt;div&gt;
-          &lt;span class="font-medium text-gray-700"&gt;Member:&lt;/span&gt;
-          &lt;span class="text-gray-900"&gt;{recordToDelete.member?.name}&lt;/span&gt;
-        &lt;/div&gt;
-        &lt;div&gt;
-          &lt;span class="font-medium text-gray-700"&gt;Event:&lt;/span&gt;
-          &lt;span class="text-gray-900"&gt;{recordToDelete.event?.title}&lt;/span&gt;
-        &lt;/div&gt;
-        &lt;div&gt;
-          &lt;span class="font-medium text-gray-700"&gt;Date:&lt;/span&gt;
-          &lt;span class="text-gray-900"&gt;{formatDate(recordToDelete.attendance_date)}&lt;/span&gt;
-        &lt;/div&gt;
-      &lt;/div&gt;
-    &lt;/div&gt;
+    <div class="bg-gray-50 rounded-lg p-4 mb-6">
+      <div class="grid grid-cols-2 gap-4 text-sm">
+        <div>
+          <span class="font-medium text-gray-700">Member:</span>
+          <span class="text-gray-900">{recordToDelete.member?.name}</span>
+        </div>
+        <div>
+          <span class="font-medium text-gray-700">Event:</span>
+          <span class="text-gray-900">{recordToDelete.event?.title}</span>
+        </div>
+        <div>
+          <span class="font-medium text-gray-700">Date:</span>
+          <span class="text-gray-900">{formatDate(recordToDelete.attendance_date)}</span>
+        </div>
+      </div>
+    </div>
   {/if}
 
-  &lt;div class="flex justify-end gap-3"&gt;
-    &lt;Button variant="outline" on:click={() =&gt; showDeleteConfirm = false}&gt;
+  <div class="flex justify-end gap-3">
+    <Button variant="outline" on:click={() => showDeleteConfirm = false}>
       Cancel
-    &lt;/Button&gt;
-    &lt;Button variant="destructive" on:click={confirmDelete}&gt;
+    </Button>
+    <Button variant="destructive" on:click={confirmDelete}>
       Delete Record
-    &lt;/Button&gt;
-  &lt;/div&gt;
-&lt;/Modal&gt;
+    </Button>
+  </div>
+</Modal>
 
-&lt;!-- Bulk Delete Confirmation Modal --&gt;
-&lt;Modal bind:show={showBulkActions} title="Delete Selected Records"&gt;
-  &lt;p class="text-gray-600 mb-6"&gt;
+<!-- Bulk Delete Confirmation Modal -->
+<Modal bind:show={showBulkActions} title="Delete Selected Records">
+  <p class="text-gray-600 mb-6">
     Are you sure you want to delete {$selectedAttendanceRecords.size} attendance records? This action cannot be undone.
-  &lt;/p&gt;
+  </p>
 
-  &lt;div class="flex justify-end gap-3"&gt;
-    &lt;Button variant="outline" on:click={() =&gt; showBulkActions = false}&gt;
+  <div class="flex justify-end gap-3">
+    <Button variant="outline" on:click={() => showBulkActions = false}>
       Cancel
-    &lt;/Button&gt;
-    &lt;Button variant="destructive" on:click={handleBulkDelete}&gt;
+    </Button>
+    <Button variant="destructive" on:click={handleBulkDelete}>
       Delete {$selectedAttendanceRecords.size} Records
-    &lt;/Button&gt;
-  &lt;/div&gt;
-&lt;/Modal&gt;
+    </Button>
+  </div>
+</Modal>
 
-&lt;!-- Export Modal --&gt;
-&lt;Modal bind:show={showExportModal} title="Export Attendance Data"&gt;
-  &lt;div class="space-y-4"&gt;
-    &lt;div&gt;
-      &lt;label for="exportFormat" class="block text-sm font-medium text-gray-700 mb-2"&gt;
+<!-- Export Modal -->
+<Modal bind:show={showExportModal} title="Export Attendance Data">
+  <div class="space-y-4">
+    <div>
+      <label for="exportFormat" class="block text-sm font-medium text-gray-700 mb-2">
         Export Format
-      &lt;/label&gt;
-      &lt;select
+      </label>
+      <select
         id="exportFormat"
         bind:value={exportFormat}
         class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-      &gt;
-        &lt;option value="csv"&gt;CSV&lt;/option&gt;
-        &lt;option value="xlsx"&gt;Excel&lt;/option&gt;
-      &lt;/select&gt;
-    &lt;/div&gt;
+      >
+        <option value="csv">CSV</option>
+        <option value="xlsx">Excel</option>
+      </select>
+    </div>
 
-    &lt;p class="text-sm text-gray-600"&gt;
+    <p class="text-sm text-gray-600">
       The export will include all attendance records matching your current filters.
-    &lt;/p&gt;
-  &lt;/div&gt;
+    </p>
+  </div>
 
-  &lt;div class="flex justify-end gap-3 mt-6"&gt;
-    &lt;Button variant="outline" on:click={() =&gt; showExportModal = false}&gt;
+  <div class="flex justify-end gap-3 mt-6">
+    <Button variant="outline" on:click={() => showExportModal = false}>
       Cancel
-    &lt;/Button&gt;
-    &lt;Button on:click={handleExport}&gt;
+    </Button>
+    <Button on:click={handleExport}>
       Export Data
-    &lt;/Button&gt;
-  &lt;/div&gt;
-&lt;/Modal&gt;
+    </Button>
+  </div>
+</Modal>

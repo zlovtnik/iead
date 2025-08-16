@@ -4,9 +4,13 @@ FROM node:18-alpine AS frontend-builder
 
 WORKDIR /app/frontend
 COPY public/package*.json ./
-RUN npm ci --only=production
+RUN npm install
 
-COPY public/ ./
+COPY public/src ./src/
+COPY public/static ./static/
+COPY public/*.js public/*.ts public/*.json ./
+COPY public/*.config.* ./
+COPY public/.svelte-kit ./.svelte-kit/
 RUN npm run build
 
 # Stage 2: Build backend
@@ -48,16 +52,11 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy Lua rocks from builder
-COPY --from=backend-builder /usr/local/lib/lua/5.1/luasql /usr/local/lib/lua/5.1/luasql
+# Copy Lua rocks from builder (only available files)
 COPY --from=backend-builder /usr/local/lib/lua/5.1/cjson.so /usr/local/lib/lua/5.1/cjson.so
 COPY --from=backend-builder /usr/local/lib/lua/5.1/socket /usr/local/lib/lua/5.1/socket
-COPY --from=backend-builder /usr/local/lib/lua/5.1/bcrypt.so /usr/local/lib/lua/5.1/bcrypt.so
-COPY --from=backend-builder /usr/local/share/lua/5.1/luasql /usr/local/share/lua/5.1/luasql
 COPY --from=backend-builder /usr/local/share/lua/5.1/cjson /usr/local/share/lua/5.1/cjson
 COPY --from=backend-builder /usr/local/share/lua/5.1/socket /usr/local/share/lua/5.1/socket
-COPY --from=backend-builder /usr/local/share/lua/5.1/bcrypt /usr/local/share/lua/5.1/bcrypt
-COPY --from=backend-builder /usr/local/bin/church-management /usr/local/bin/church-management
 
 # Create app user for security
 
@@ -73,13 +72,15 @@ COPY *.sh ./
 COPY church_management.db ./
 
 # Copy built frontend
-COPY --from=frontend-builder /app/frontend/dist ./public/dist/
+COPY --from=frontend-builder /app/frontend/.svelte-kit/output ./public/build/
 COPY --from=frontend-builder /app/frontend/static ./public/static/
 
 # Make scripts executable
 RUN chmod +x scripts/*.sh
-RUN chmod +x *.sh
-RUN chmod +x /app/bin/healthcheck.sh
+RUN chmod +x ./bin/healthcheck.sh || true
+
+# Create app user for security
+RUN useradd -r -s /bin/false appuser
 
 # Create necessary directories
 RUN mkdir -p /app/logs /app/tmp /app/uploads
