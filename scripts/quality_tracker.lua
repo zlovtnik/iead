@@ -137,29 +137,33 @@ function QualityTracker:calculate_test_coverage()
         failing_tests = 0
     }
     
-    -- Run backend tests and capture coverage
-    local backend_result = os.execute("cd " .. self.project_root .. " && lua scripts/run_tests.lua > /tmp/test_output.txt 2>&1")
-    if backend_result == 0 then
-        local coverage_file = "/tmp/test_output.txt"
-        local f = io.open(coverage_file, "r")
-        if f then
-            local output = f:read("*all")
-            f:close()
-            -- Try to extract coverage percent (e.g., "Coverage: 87.5%" or similar)
-            local percent = string.match(output, "[Cc]overage:?%s*([%d%.]+)%%")
-            if percent then
-                coverage.backend_coverage = tonumber(percent)
-            else
-                coverage.backend_coverage = nil
-                print("[quality_tracker] Warning: Could not extract backend coverage percent from test output.")
-            end
+    -- Run backend coverage calculation
+    local backend_result = os.execute("cd " .. self.project_root .. " && lua scripts/calculate_coverage.lua > /dev/null 2>&1")
+    
+    -- Always try to read the coverage file, regardless of return code
+    local coverage_file = "/tmp/test_output.txt"
+    local f = io.open(coverage_file, "r")
+    if f then
+        local output = f:read("*all")
+        f:close()
+        -- Try to extract coverage percent (e.g., "Coverage: 87.5%" or similar)
+        local percent = string.match(output, "[Cc]overage:?%s*([%d%.]+)%%")
+        if percent then
+            coverage.backend_coverage = tonumber(percent)
+            
+            -- Also extract test counts
+            local passed = string.match(output, "Tests passed:%s*(%d+)")
+            local failed = string.match(output, "Tests failed:%s*(%d+)")
+            if passed then coverage.passing_tests = tonumber(passed) end
+            if failed then coverage.failing_tests = tonumber(failed) end
+            coverage.total_tests = (coverage.passing_tests or 0) + (coverage.failing_tests or 0)
         else
             coverage.backend_coverage = nil
-            print("[quality_tracker] Warning: Could not open backend test output file for coverage.")
+            print("[quality_tracker] Warning: Could not extract backend coverage percent from test output.")
         end
     else
         coverage.backend_coverage = nil
-        print("[quality_tracker] Warning: Backend tests did not complete successfully.")
+        print("[quality_tracker] Warning: Could not open backend test output file for coverage.")
     end
     
     -- Check frontend test coverage if available

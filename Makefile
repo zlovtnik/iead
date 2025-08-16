@@ -9,7 +9,7 @@ install:
 
 # Run the application
 run:
-	./start.sh
+	./scripts/start.sh
 
 # Build the application package
 build:
