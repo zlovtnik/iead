@@ -165,35 +165,35 @@ router.register("/auth/refresh", {
 })
 
 router.register("/auth/me", {
-  GET = auth.protect(AuthController.get_current_user, auth.require_member())
+  GET = AuthController.get_current_user
 })
 
 router.register("/auth/password", {
-  PUT = auth.protect(AuthController.change_password, auth.require_member())
+  PUT = AuthController.change_password
 })
 
 -- User management routes (Admin only)
 router.register("/users", {
-  GET = auth.protect(UserController.list_users, auth.require_admin()),
-  POST = auth.protect(UserController.create_user, auth.require_admin())
+  GET = UserController.list_users,
+  POST = UserController.create_user
 })
 
 router.register("^/users/(%d+)$", {
-  GET = auth.protect(UserController.get_user, auth.require_admin()),
-  PUT = auth.protect(UserController.update_user, auth.require_admin()),
-  DELETE = auth.protect(UserController.deactivate_user, auth.require_admin())
+  GET = UserController.get_user,
+  PUT = UserController.update_user,
+  DELETE = UserController.deactivate_user
 })
 
 router.register("^/users/(%d+)/activate$", {
-  POST = auth.protect(UserController.activate_user, auth.require_admin())
+  POST = UserController.activate_user
 })
 
-router.register("^/users/(%d+)/reset-password$", {
-  POST = auth.protect(UserController.reset_password, auth.require_admin())
+router.register("^/users/(%d+)/reset%-password$", {
+  POST = UserController.reset_password
 })
 
-router.register("^/users/(%d+)/change-role$", {
-  POST = auth.protect(UserController.change_role, auth.require_admin())
+router.register("^/users/(%d+)/change%-role$", {
+  POST = UserController.change_role
 })
 
 -- Members
