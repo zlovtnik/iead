@@ -18,14 +18,14 @@ FROM debian:bullseye-slim AS backend-builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
-    lua5.4 \
-    liblua5.4-dev \
-    luarocks \
-    sqlite3 \
-    libsqlite3-dev \
     build-essential \
     curl \
     git \
+    liblua5.4-dev \
+    libsqlite3-dev \
+    lua5.4 \
+    luarocks \
+    sqlite3 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -35,6 +35,7 @@ WORKDIR /app
 RUN luarocks install luasql-sqlite3
 RUN luarocks install lua-cjson
 RUN luarocks install luasocket
+RUN luarocks install luafilesystem
 RUN luarocks install redis-lua || echo "WARNING: redis-lua installation failed"
 RUN luarocks install luacheck
 RUN luarocks install busted
@@ -44,17 +45,18 @@ FROM openresty/openresty:1.21.4.1-0-bullseye AS production
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
+    bash \
+    curl \
+    libsqlite3-dev \
     lua5.4 \
     sqlite3 \
-    libsqlite3-dev \
-    curl \
-    bash \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Lua rocks from builder (only available files)
 COPY --from=backend-builder /usr/local/lib/lua/5.1/cjson.so /usr/local/lib/lua/5.1/cjson.so
 COPY --from=backend-builder /usr/local/lib/lua/5.1/socket /usr/local/lib/lua/5.1/socket
+COPY --from=backend-builder /usr/local/lib/lua/5.1/lfs.so /usr/local/lib/lua/5.1/lfs.so
 COPY --from=backend-builder /usr/local/share/lua/5.1/cjson /usr/local/share/lua/5.1/cjson
 COPY --from=backend-builder /usr/local/share/lua/5.1/socket /usr/local/share/lua/5.1/socket
 

@@ -4,15 +4,8 @@
 local ApiResponse = require("src.application.middlewares.api_response")
 local ErrorHandler = require("src.application.middlewares.error_handler")
 local log = require("src.utils.log")
-
--- Helper function to get table keys
-local function get_table_keys(t)
-  local keys = {}
-  for k, _ in pairs(t) do
-    table.insert(keys, k)
-  end
-  return keys
-end
+-- Use shared utils module for table helpers
+local utils = require("src.utils.init")
 
 local RequestValidator = {}
 
@@ -287,7 +280,7 @@ function RequestValidator.create_validator(schema, options)
 
     log.debug("Request validation passed", {
       request_id = request_id,
-      fields_validated = table.concat(get_table_keys(schema), ", "),
+  fields_validated = table.concat(utils.get_table_keys(schema), ", "),
       endpoint = options.endpoint or "unknown"
     })
     

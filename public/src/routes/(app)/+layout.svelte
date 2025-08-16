@@ -18,15 +18,13 @@
   onMount(() => {
     auth.init();
     
-    // Debug: log auth state
-    console.log('Initial auth state in app layout:', auth.get());
+
     
     // Subscribe to auth changes and redirect if not authenticated
     const unsubscribe = isAuthenticated.subscribe((authenticated) => {
       console.log('Auth state changed:', authenticated, 'Current path:', $page.url.pathname);
       
       if (!authenticated && $page.url.pathname !== '/login') {
-        console.log('Not authenticated, redirecting to login');
         goto(`/login?redirect=${encodeURIComponent($page.url.pathname)}`);
       }
     });
@@ -100,6 +98,11 @@
   function showLogoutConfirmation() {
     showLogoutModal = true;
     closeUserMenu();
+  }
+
+  // Handlers for modal buttons
+  function handleCancelLogout() {
+    showLogoutModal = false;
   }
 
   // Close menus when clicking outside
@@ -294,7 +297,7 @@
     <div class="flex justify-end space-x-3">
       <Button
         variant="ghost"
-        onclick={() => showLogoutModal = false}
+  onclick={handleCancelLogout}
       >
         Cancel
       </Button>

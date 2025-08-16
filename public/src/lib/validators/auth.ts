@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { requiredString, email, password, confirmPassword } from './common.js';
+import { requiredString, email, password, confirmPassword, loginPassword } from './common.js';
 
 /**
  * Authentication-related validation schemas
@@ -7,7 +7,8 @@ import { requiredString, email, password, confirmPassword } from './common.js';
 
 export const loginSchema = z.object({
   username: requiredString('Username is required'),
-  password: password, // Use full password validation instead of just required string
+  // For login, only require a non-empty string; do not trim/normalize or enforce strength
+  password: loginPassword,
 });
 
 export const registerSchema = z.object({

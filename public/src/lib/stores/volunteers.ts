@@ -1,4 +1,4 @@
-import { writable, derived } from 'svelte/store';
+import { writable, derived, get } from 'svelte/store';
 import { VolunteersApi, type Volunteer, type VolunteerFormData, type VolunteerSearchParams, type VolunteerFilters, type VolunteerHoursReport, type VolunteerHistory } from '../api/volunteers.js';
 import { handleApiError } from '../utils/error-handling.js';
 import { toastStore } from './ui.js';
@@ -42,14 +42,14 @@ export const volunteers = {
     volunteersStore.update(state => ({ ...state, loading: true, error: null }));
     
     try {
-      const { searchQuery, filters, sortBy, sortOrder, currentPage, pageSize } = this.getState();
+      const { searchQuery, filters, sortBy, sortOrder, currentPage, pageSize } = get(volunteersStore);
       const params: VolunteerSearchParams & VolunteerFilters = {
+        ...filters,
         query: searchQuery || undefined,
-        sortBy: sortBy as any,
+        sortBy,
         sortOrder,
         page: currentPage,
-        limit: pageSize,
-        ...filters
+        limit: pageSize
       };
 
       const response = await VolunteersApi.getVolunteers(params);
@@ -180,6 +180,7 @@ export const volunteers = {
   },
 
   async completeAssignment(id: number, actualHours: number, notes?: string) {
+    volunteersStore.update(state => ({ ...state, loading: true, error: null }));
     try {
       const updatedVolunteer = await VolunteersApi.completeVolunteerAssignment(id, {
         actual_hours: actualHours,
@@ -191,13 +192,15 @@ export const volunteers = {
         volunteers: state.volunteers.map(v => 
           v.id === id ? updatedVolunteer : v
         ),
-        currentVolunteer: state.currentVolunteer?.id === id ? updatedVolunteer : state.currentVolunteer
+        currentVolunteer: state.currentVolunteer?.id === id ? updatedVolunteer : state.currentVolunteer,
+        loading: false
       }));
       
       toastStore.success('Volunteer assignment completed successfully');
       return updatedVolunteer;
     } catch (error) {
       const apiError = handleApiError(error);
+      volunteersStore.update(state => ({ ...state, loading: false, error: apiError.message }));
       toastStore.error(apiError.message);
       throw error;
     }

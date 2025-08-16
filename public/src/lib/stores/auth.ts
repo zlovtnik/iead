@@ -129,7 +129,8 @@ export const auth = {
       TokenStorage.setTokens(response.tokens);
       TokenStorage.setUser(response.user);
       
-      console.log('Login successful, user:', response.user);
+      // Don't log user data in production
+      if (import.meta.env.DEV) console.log('Login successful, user ID:', response.user.id);
       
       // Update auth state after tokens are saved
       authStore.update(state => ({

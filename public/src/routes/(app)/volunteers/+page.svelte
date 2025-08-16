@@ -10,6 +10,7 @@
   import VolunteerCompletion from '$lib/components/forms/VolunteerCompletion.svelte';
   import VolunteerHistory from '$lib/components/forms/VolunteerHistory.svelte';
   import type { Volunteer, VolunteerFormData } from '$lib/api/volunteers.js';
+  import type { TableConfig } from '$lib/types/table.js';
 
   let showCreateForm = $state(false);
   let showEditForm = $state(false);
@@ -39,114 +40,93 @@
     return () => clearTimeout(timeoutId);
   });
 
+<script lang="ts">
+  let isInitialLoad = true;
+
   // Update filters when they change
   $effect(() => {
+    if (isInitialLoad) {
+      isInitialLoad = false;
+      return;
+    }
     volunteers.setFilters({
       status: statusFilter || undefined,
       role: roleFilter || undefined
     });
     volunteers.loadVolunteers();
   });
+</script>
 
-  const columns = [
-    {
-      key: 'member_name',
-      title: 'Member',
-      sortable: true,
-      render: (value: string, row: Volunteer) => {
-        const member = $members.members.find(m => m.id === row.member_id);
-        return member?.name || 'Unknown Member';
-      }
-    },
-    {
-      key: 'role',
-      title: 'Role',
-      sortable: true
-    },
-    {
-      key: 'event_title',
-      title: 'Event',
-      render: (value: string) => value || 'General Assignment'
-    },
-    {
-      key: 'hours',
-      title: 'Hours',
-      sortable: true,
-      render: (value: number) => value.toString()
-    },
-    {
-      key: 'status',
-      title: 'Status',
-      sortable: true,
-      render: (value: string) => {
-        const statusColors = {
-          active: 'bg-green-100 text-green-800',
-          completed: 'bg-blue-100 text-blue-800',
-          inactive: 'bg-gray-100 text-gray-800'
-        };
-        const colorClass = statusColors[value as keyof typeof statusColors] || 'bg-gray-100 text-gray-800';
-        return `<span class="px-2 py-1 rounded-full text-xs font-medium ${colorClass}">${value}</span>`;
-      }
-    },
-    {
-      key: 'start_date',
-      title: 'Start Date',
-      sortable: true,
-      render: (value: string) => new Date(value).toLocaleDateString()
-    },
-    {
-      key: 'actions',
-      title: 'Actions',
-      render: (_: any, row: Volunteer) => {
-        return `
-          <div class="flex gap-2">
-            <button class="text-blue-600 hover:text-blue-800 text-sm" onclick="editVolunteer(${row.id})">
-              Edit
-            </button>
-            <button class="text-green-600 hover:text-green-800 text-sm" onclick="completeVolunteer(${row.id})">
-              Complete
-            </button>
-            <button class="text-purple-600 hover:text-purple-800 text-sm" onclick="viewHistory(${row.member_id})">
-              History
-            </button>
-            <button class="text-red-600 hover:text-red-800 text-sm" onclick="deleteVolunteer(${row.id})">
-              Delete
-            </button>
-          </div>
-        `;
-      }
-    }
-  ];
-
-  // Make functions globally available for the table action buttons
-  globalThis.editVolunteer = (id: number) => {
-    selectedVolunteer = $volunteers.volunteers.find(v => v.id === id) || null;
+  // Local action handlers replacing globalThis usage
+  function editVolunteer(row: Volunteer) {
+    selectedVolunteer = row;
     showEditForm = true;
-  };
+  }
 
-  globalThis.completeVolunteer = (id: number) => {
-    selectedVolunteer = $volunteers.volunteers.find(v => v.id === id) || null;
+  function completeVolunteer(row: Volunteer) {
+    selectedVolunteer = row;
     showCompletionForm = true;
-  };
+  }
 
-  globalThis.viewHistory = (memberId: number) => {
-    const member = $members.members.find(m => m.id === memberId);
-    selectedMemberId = memberId;
+  function viewHistory(row: Volunteer) {
+    const member = $members.members.find(m => m.id === row.member_id);
+    selectedMemberId = row.member_id;
     selectedMemberName = member?.name || 'Unknown Member';
     showHistoryModal = true;
-  };
+  }
 
-  globalThis.deleteVolunteer = async (id: number) => {
-    const volunteer = $volunteers.volunteers.find(v => v.id === id);
-    if (!volunteer) return;
-
+  async function deleteVolunteer(row: Volunteer) {
+    const volunteer = row;
     const member = $members.members.find(m => m.id === volunteer.member_id);
     const memberName = member?.name || 'this volunteer';
-
     if (confirm(`Are you sure you want to delete the volunteer assignment for ${memberName}?`)) {
-      await volunteers.deleteVolunteer(id);
+      await volunteers.deleteVolunteer(volunteer.id);
     }
+  }
+
+  // Table configuration with columns and actions
+  const tableConfig: TableConfig<Volunteer> = {
+    columns: [
+      {
+        key: 'member_name',
+        label: 'Member',
+        sortable: true,
+        render: (_value: string, row: Volunteer) => {
+          const member = $members.members.find(m => m.id === row.member_id);
+          return member?.name || 'Unknown Member';
+        }
+      },
+      { key: 'role', label: 'Role', sortable: true },
+      {
+        key: 'event_title',
+        label: 'Event',
+        render: (value: string) => value || 'General Assignment'
+      },
+      {
+        key: 'hours',
+        label: 'Hours',
+        sortable: true,
+        render: (value: number) => String(value)
+      },
+      { key: 'status', label: 'Status', sortable: true },
+      {
+        key: 'start_date',
+        label: 'Start Date',
+        sortable: true,
+        render: (value: string) => new Date(value).toLocaleDateString()
+      }
+    ],
+    actions: [
+      { label: 'Edit', variant: 'primary', onClick: editVolunteer },
+      { label: 'Complete', onClick: completeVolunteer },
+      { label: 'History', onClick: viewHistory },
+      { label: 'Delete', variant: 'danger', onClick: deleteVolunteer }
+    ],
+    hover: true,
+    striped: true
   };
+
+  // Removed globalThis handlers; actions are wired via DataTable config.actions
 
   function handleCreateVolunteer() {
     selectedVolunteer = null;
@@ -291,17 +271,17 @@
   <div class="bg-white rounded-lg shadow-sm border">
     <DataTable
       data={$volunteers.volunteers}
-      {columns}
+      config={tableConfig}
       loading={$volunteers.loading}
       error={$volunteers.error}
       pagination={{
         page: $volunteers.currentPage,
-        limit: $volunteers.pageSize,
+        pageSize: $volunteers.pageSize,
         total: $volunteers.totalCount,
         totalPages: Math.ceil($volunteers.totalCount / $volunteers.pageSize)
       }}
-      onSort={handleSort}
-      onPageChange={handlePageChange}
+      onsort={(sort) => handleSort(sort.column, sort.direction ?? 'asc')}
+      onpaginate={(p) => handlePageChange(p.page ?? 1)}
       emptyMessage="No volunteers found"
     />
   </div>

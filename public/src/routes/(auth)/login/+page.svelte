@@ -13,13 +13,24 @@
     password: ''
   };
 
+  // Accept only same-origin relative paths. Allow '/path', reject '//' or any protocol-prefixed URLs.
+  function sanitizeRedirect(raw: string | null, fallback: string): string {
+    if (!raw) return fallback;
+    // Only allow root-relative paths like '/dashboard' but not '//' (protocol-relative) or 'http://', 'https://', etc.
+    if (raw.startsWith('/') && !raw.startsWith('//')) return raw;
+    return fallback;
+  }
+
   // Redirect if already authenticated
   onMount(() => {
     return isAuthenticated.subscribe((authenticated) => {
       if (authenticated) {
         const user = auth.get().user;
         if (user) {
-          const redirectTo = $page.url.searchParams.get('redirect') || getPostLoginRedirect(user);
+          const redirectTo = sanitizeRedirect(
+            $page.url.searchParams.get('redirect'),
+            getPostLoginRedirect(user)
+          );
           goto(redirectTo, { replaceState: true });
         }
       }
@@ -30,8 +41,10 @@
     try {
       await auth.login(data);
       
-      // Get redirect URL from query params or use default
-      const redirectTo = $page.url.searchParams.get('redirect') || '/dashboard';
+  // Get redirect URL from query params, sanitized with a safe fallback
+  const user = auth.get().user;
+  const fallback = user ? getPostLoginRedirect(user) : '/dashboard';
+  const redirectTo = sanitizeRedirect($page.url.searchParams.get('redirect'), fallback);
       console.log('Login successful, redirecting to:', redirectTo);
       setTimeout(() => {
         goto(redirectTo, { replaceState: true });

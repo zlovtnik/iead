@@ -50,25 +50,46 @@ export const volunteerSchema = z.object({
 
 export const volunteerCreateSchema = volunteerSchema;
 
-export const volunteerUpdateSchema = volunteerSchema.partial().extend({
-  id: positiveNumber,
-});
+export const volunteerUpdateSchema = z
+  .object({
+    member_id: positiveNumber.optional(),
+    event_id: positiveNumber.optional(),
+    role: volunteerRoleSchema.optional(),
+    hours: nonNegativeNumber.optional(),
+    notes: optionalString, // already optional by definition
+    status: volunteerStatusSchema.optional(),
+    start_date: dateString.optional(),
+    end_date: dateString.optional(),
+  })
+  .extend({ id: positiveNumber })
+  .refine(
+    (data) => {
+      if (data.start_date && data.end_date) {
+        return new Date(data.end_date) >= new Date(data.start_date);
+      }
+      return true;
+    },
+    {
+      message: 'End date must be after or equal to start date',
+      path: ['end_date'],
+    }
+  );
 
 export const volunteerSearchSchema = z.object({
   query: optionalString,
   sortBy: z.enum(['role', 'hours', 'start_date', 'created_at']).default('start_date'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
-  page: z.number().int().positive().default(1),
-  limit: z.number().int().positive().max(100).default(20),
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(20),
 });
 
 export const volunteerFiltersSchema = z.object({
-  member_id: positiveNumber.optional(),
-  event_id: positiveNumber.optional(),
+  member_id: z.coerce.number().int().positive().optional(),
+  event_id: z.coerce.number().int().positive().optional(),
   status: volunteerStatusSchema.optional(),
   role: volunteerRoleSchema.optional(),
-  minHours: nonNegativeNumber.optional(),
-  maxHours: nonNegativeNumber.optional(),
+  minHours: z.coerce.number().min(0).optional(),
+  maxHours: z.coerce.number().min(0).optional(),
   startDateAfter: dateString.optional(),
   startDateBefore: dateString.optional(),
 }).refine(

@@ -64,13 +64,19 @@ function auth.extract_token(client)
     return nil
   end
   
-  log.info("Auth header found", {header = auth_header})
-  
+  log.debug("Authorization header present")
+
   -- Extract Bearer token
-  local token = auth_header:match("^Bearer%s+(.+)$")
-  
-  log.info("Token extraction result", {token = token or "nil"})
-  
+  local token = auth_header:match("^[Bb]earer%s+(.+)$")
+  if token then
+    -- Trim possible leading/trailing whitespace
+    token = token:match("^%s*(.-)%s*$")
+  end
+
+  -- Only log a short fingerprint for diagnostics; never the full token
+  local token_fp = token and (token:sub(1, 4) .. "..." .. token:sub(-4)) or nil
+  log.debug("Token extracted", {fp = token_fp})
+
   return token
 end
 
@@ -94,16 +100,15 @@ function auth.validate_session(token)
   local user = {
     id = session.user_id,
     username = session.username,
-    email = session.email,
     role = session.role,
-    member_id = session.member_id,
-    is_active = validation.normalize_boolean(session.is_active)
+    is_active = session.is_active
   }
   
-  -- Debug logging
-  log.info("Session validation debug", {
-    user_id = session.user_id,
-    username = session.username,
+  -- Debug logging (minimal, non-PII)
+  log.debug("Session validated", {
+    user_id = user.id,
+    role = user.role,
+    active = user.is_active,
     is_active_raw = session.is_active,
     is_active_type = type(session.is_active),
     is_active_computed = user.is_active

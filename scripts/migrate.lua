@@ -5,7 +5,15 @@
 
 local sqlite3 = require("luasql.sqlite3")
 local json = require("cjson")
-local lfs = require("lfs")
+-- Safe require for LuaFileSystem (lfs)
+local ok_lfs, lfs = pcall(require, "lfs")
+if not ok_lfs then
+    io.stderr:write("Error: LuaFileSystem (lfs) is not installed or not found.\n")
+    io.stderr:write("Install it with LuaRocks:\n  luarocks install luafilesystem\n\n")
+    io.stderr:write("macOS (Homebrew):\n  brew install luarocks && luarocks install luafilesystem\n\n")
+    io.stderr:write("Debian/Ubuntu:\n  sudo apt-get update && sudo apt-get install -y luarocks && sudo luarocks install luafilesystem\n")
+    os.exit(1)
+end
 
 local DatabaseMigrator = {}
 DatabaseMigrator.__index = DatabaseMigrator
@@ -214,7 +222,7 @@ function DatabaseMigrator:create_migration(description)
     local filename = string.format("%04d_%s.lua", next_version, description:gsub("%s+", "_"):lower())
     local filepath = self.migrations_dir .. "/" .. filename
     
-    local template = string.format([[
+    local template = string.format([=[
 -- Migration %d: %s
 -- Created: %s
 
@@ -229,7 +237,7 @@ function DatabaseMigrator:create_migration(description)
 -- print("Added phone_verified column to members table")
 
 -- Remember to test your migration thoroughly before applying to production!
-]], next_version, description, os.date("%Y-%m-%d %H:%M:%S"))
+]=], next_version, description, os.date("%Y-%m-%d %H:%M:%S"))
     
     local f = io.open(filepath, "w")
     if not f then

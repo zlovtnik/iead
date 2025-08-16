@@ -24,6 +24,12 @@ class HttpClient implements ApiClient {
     reject: (error: any) => void;
   }> = [];
 
+  // Normalize backend responses without dropping falsy values
+  private extractResponseData<T>(response: AxiosResponse): T {
+    const hasNestedData = response.data && (response.data as any).data !== undefined;
+    return (hasNestedData ? (response.data as any).data : response.data) as T;
+  }
+
   constructor(baseURL: string = typeof env !== 'undefined' && env.PUBLIC_API_BASE_URL ? env.PUBLIC_API_BASE_URL : 'http://localhost:8080/api/v1') {
     this.axiosInstance = axios.create({
       baseURL,
@@ -184,7 +190,7 @@ class HttpClient implements ApiClient {
     try {
       const response = await this.axiosInstance.get(url, config);
       // Handle your backend's response format - data might be at root level or under 'data' key
-      return response.data.data || response.data;
+      return this.extractResponseData<T>(response);
     } catch (error) {
       console.error(`Error fetching ${url}:`, error);
       throw error;
@@ -194,25 +200,25 @@ class HttpClient implements ApiClient {
   async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.axiosInstance.post(url, data, config);
     // Handle your backend's response format - data might be at root level or under 'data' key
-    return response.data.data || response.data;
+    return this.extractResponseData<T>(response);
   }
 
   async put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.axiosInstance.put(url, data, config);
     // Handle your backend's response format - data might be at root level or under 'data' key
-    return response.data.data || response.data;
+    return this.extractResponseData<T>(response);
   }
 
   async patch<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.axiosInstance.patch(url, data, config);
     // Handle your backend's response format - data might be at root level or under 'data' key
-    return response.data.data || response.data;
+    return this.extractResponseData<T>(response);
   }
 
   async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.axiosInstance.delete(url, config);
     // Handle your backend's response format - data might be at root level or under 'data' key
-    return response.data.data || response.data;
+    return this.extractResponseData<T>(response);
   }
 }
 

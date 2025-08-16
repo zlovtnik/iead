@@ -4,9 +4,9 @@ export function generateMockDonationData(): DonationSummary {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const currentMonth = new Date().getMonth();
   
-  const donations = months.map((month, index) => {
-    // Create a cycle with higher values in certain months
-    const monthIndex = (currentMonth - 11 + index) % 12;
+  const donations = months.map((_, index) => {
+    // Create a cycle with higher values in certain months over the last 12 months ending in the current month
+    const monthIndex = ((currentMonth - 11 + index) + 12) % 12; // normalize to 0..11
     const baseAmount = 5000 + Math.random() * 3000;
     
     let seasonalFactor = 1;
@@ -17,8 +17,11 @@ export function generateMockDonationData(): DonationSummary {
     }
     
     return {
-      month: month,
+      month: months[monthIndex],
       amount: Math.round(baseAmount * seasonalFactor),
+      count: Math.round(10 + Math.random() * 20)
+    };
+  });
       count: Math.round(10 + Math.random() * 20)
     };
   });

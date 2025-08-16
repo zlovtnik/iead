@@ -1,11 +1,11 @@
 -- src/utils/init.lua
--- Global utility functions initialization for Church Management System
+-- Utility functions module for Church Management System (no globals)
 
 -- Load table utilities
 local table_utils = require("src.utils.table_utils")
 
--- Make get_table_keys globally available (as expected by request_validator.lua)
-function get_table_keys(tbl)
+-- Local helper: get table keys
+local function get_table_keys(tbl)
     if type(tbl) ~= "table" then
         return {}
     end
@@ -17,16 +17,16 @@ function get_table_keys(tbl)
     return keys
 end
 
--- Export other useful functions globally if needed
-function get_table_values(tbl)
+-- Local helper: get table values
+local function get_table_values(tbl)
     return table_utils.get_table_values(tbl)
 end
 
-function is_table_empty(tbl)
+local function is_table_empty(tbl)
     return table_utils.is_empty(tbl)
 end
 
-function get_table_size(tbl)
+local function get_table_size(tbl)
     return table_utils.table_size(tbl)
 end
 

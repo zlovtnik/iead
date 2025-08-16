@@ -56,11 +56,17 @@ export const password = z
   .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
   .regex(/\d/, 'Password must contain at least one number');
 
+// Login-only password validator: required non-empty string with no trim/normalization
+export const loginPassword = z.string().min(1, 'Password is required');
+
 export const confirmPassword = (passwordField = 'password') =>
-  z.string().refine((value, ctx) => {
-    const password = ctx.parent[passwordField];
-    return value === password;
-  }, 'Passwords do not match');
+  z.string().superRefine((value, ctx) => {
+    const parent: any = (ctx as any).parent ?? undefined;
+    const pwd = parent ? parent[passwordField] : undefined;
+    if (value !== pwd) {
+      ctx.addIssue({ code: 'custom', message: 'Passwords do not match' });
+    }
+  });
 
 // URL validator
 export const url = z.string().url('Please enter a valid URL').optional().or(z.literal(''));
@@ -88,7 +94,7 @@ export const nonEmptyArray = <T>(schema: z.ZodSchema<T>, message = 'At least one
 export const createEnumValidator = <T extends string>(
   values: readonly T[],
   message = 'Please select a valid option'
-) => z.enum(values as [T, ...T[]], { errorMap: () => ({ message }) });
+) => z.enum(values as [T, ...T[]], { message });
 
 // Custom refinements
 export const createCustomValidator = <T>(
@@ -101,12 +107,14 @@ export const conditionalRequired = (
   condition: (data: any) => boolean,
   message = 'This field is required'
 ) =>
-  z.string().refine((value, ctx) => {
-    if (condition(ctx.parent)) {
-      return value && value.trim().length > 0;
+  z.string().superRefine((value, ctx) => {
+    const parent: any = (ctx as any).parent ?? undefined;
+    if (condition(parent)) {
+      if (!value || value.trim().length === 0) {
+        ctx.addIssue({ code: 'custom', message });
+      }
     }
-    return true;
-  }, message);
+  });
 
 // File validators (for future use)
 export const fileSize = (maxSizeInMB: number) =>

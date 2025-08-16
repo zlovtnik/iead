@@ -24,6 +24,7 @@ COPY . .
 RUN luarocks install luasql-sqlite3
 RUN luarocks install lua-cjson
 RUN luarocks install luasocket
+RUN luarocks install luafilesystem
 RUN luarocks install redis-lua
 
 # Create data directory
