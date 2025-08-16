@@ -8,19 +8,22 @@ on:
   schedule:
     # Run quality checks daily at 2 AM UTC
     - cron: '0 2 * * *'
+permissions:
+  contents: read
+  security-events: write
 
 env:
   NODE_VERSION: '18'
   LUA_VERSION: '5.1'
 
 jobs:
-  backend-quality:
-    name: Backend Quality Checks
-    runs-on: ubuntu-latest
-    
+  # …
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
+           echo "Error: OpenResty failed to start"
+           exit 1
+         fiuses: actions/checkout@v4
       
     - name: Setup Lua Environment
       uses: leafo/gh-actions-lua@v10
@@ -40,17 +43,21 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y openresty
-        
-    - name: Setup Database
+        # If schema.lua contains Lua code that generates SQL:
+        lua src/db/schema.lua | sqlite3 church_management.db || true
+        lua src/db/schema.lua | sqlite3 demo_church_management.db || true
       run: |
         sudo apt-get install -y sqlite3
-        sqlite3 church_management.db < src/db/schema.lua || true
+        # If schema.lua contains Lua code that generates SQL:
+        lua src/db/schema.lua | sqlite3 church_management.db || true
+        # Or if you have a separate SQL file:
+        # sqlite3 church_management.db < src/db/schema.sql || true
         
     - name: Run Lua Static Analysis
       run: luacheck src/ --formatter=github
       
     - name: Run Backend Unit Tests
-      run: lua scripts/run_tests.lua
+      run: lua scripts/run_comprehensive_tests.lua --json --output test-results.json --coverage --verbose
       
     - name: Run Security Tests
       run: lua scripts/simple_security_test.lua
@@ -63,14 +70,20 @@ jobs:
       run: bash scripts/security_audit.sh
       continue-on-error: true
       
+    - name: Generate Coverage Report
+      run: lua scripts/coverage_analyzer.lua --html --output coverage-report.html --json --output coverage-summary.json
+      continue-on-error: true
+      
     - name: Upload Backend Test Results
       uses: actions/upload-artifact@v4
       if: always()
       with:
         name: backend-test-results
         path: |
+          test-results.json
+          coverage-report.html
+          coverage-summary.json
           **/*.log
-          coverage/
 
   frontend-quality:
     name: Frontend Quality Checks
@@ -187,8 +200,8 @@ jobs:
         
     - name: Setup Database
       run: |
-        sqlite3 church_management.db < src/db/schema.lua || true
-        sqlite3 demo_church_management.db < src/db/schema.lua || true
+        sqlite3 church_management.db ".read src/db/schema.sql" || true
+        sqlite3 demo_church_management.db ".read src/db/schema.sql" || true
         
     - name: Setup Node.js and Frontend
       uses: actions/setup-node@v4
@@ -253,10 +266,15 @@ jobs:
         
     - name: Upload Performance Results
       uses: actions/upload-artifact@v4
-      with:
-        name: performance-benchmarks
-        path: performance-results.txt
-        
+      run: |
+        if [[ -f src/db/schema.lua ]]; then
+          lua src/db/schema.lua | sqlite3 church_management.db
+          lua src/db/schema.lua | sqlite3 demo_church_management.db
+        else
+          sqlite3 church_management.db < src/db/schema.sql
+          sqlite3 demo_church_management.db < src/db/schema.sql
+        fi
+        lua scripts/simple_demo.lua
     - name: Comment Performance Results on PR
       if: github.event_name == 'pull_request'
       uses: actions/github-script@v7

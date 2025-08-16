@@ -131,11 +131,11 @@ jobs:
           VERSION=${{ github.ref_name }}
 
     - name: Run Security Scan
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-        format: 'sarif'
-        output: 'trivy-results.sarif'
+    uses: aquasecurity/trivy-action@v1.18.0
+    with:
+      image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+      format: 'sarif'
+      output: 'trivy-results.sarif'
 
     - name: Upload Security Scan Results
       uses: github/codeql-action/upload-sarif@v2
@@ -194,16 +194,21 @@ jobs:
         # Run API tests
         curl -f http://localhost:8080/api/health
         
-        # Test authentication endpoints
-        curl -X POST http://localhost:8080/api/auth/login \
-          -H "Content-Type: application/json" \
-          -d '{"email":"test@example.com","password":"testpass"}'
-        
-        # Test member endpoints
-        curl -f http://localhost:8080/api/members
-        
-        echo "Integration tests passed!"
+      - name: Run Integration Tests
+        run: |
+          # Run API tests
+          curl -f http://localhost:8080/api/health
 
+          # Test authentication endpoints
+          TOKEN=$(curl -sS -X POST http://localhost:8080/api/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"email":"test@example.com","password":"testpass"}' | jq -r '.token')
+
+          # Test member endpoints
+          curl -f http://localhost:8080/api/members \
+            -H "Authorization: Bearer $TOKEN"
+
+          echo "Integration tests passed!"
     - name: Collect Application Logs
       if: always()
       run: |
@@ -296,18 +301,16 @@ jobs:
       run: |
         ssh -o StrictHostKeyChecking=no ${{ secrets.PRODUCTION_USER }}@${{ secrets.PRODUCTION_HOST }} << 'EOF'
           cd /opt/church-management
-          
-          # Create backup
-          backup_name="backup-$(date +%Y%m%d_%H%M%S)"
-          mkdir -p backups/$backup_name
-          
-          # Backup database
-          docker-compose -f docker-compose.production.yml exec -T app \
-            sqlite3 /app/data/church_management.db ".backup /app/backups/$backup_name/database.db"
-          
+          backup_name="$(date +%Y%m%d-%H%M%S)"
+          mkdir -p backups/"$backup_name"
+
+          # Backup database (ensure app mounts ./backups -> /app/backups)
+          docker-compose -f docker-compose.production.yml exec -T app sh -lc \
+            'mkdir -p /app/backups/'"$backup_name"' && sqlite3 /app/data/church_management.db ".backup /app/backups/'"$backup_name"'/database.db"'
+
           # Backup uploads
-          cp -r uploads backups/$backup_name/
-          
+          cp -r uploads "backups/$backup_name/"
+
           echo "Backup created: $backup_name"
         EOF
 

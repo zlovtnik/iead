@@ -36,7 +36,15 @@ schema_config:
 
 ruler:
   alertmanager_url: http://localhost:9093
-
+  enable_api: true
+  storage:
+    type: local
+    local:
+      directory: /loki/rules
+  rule_path: /loki/rules-temp
+  ring:
+    kvstore:
+      store: inmemory
 # Frontend configuration
 frontend:
   encoding: snappy
@@ -49,14 +57,14 @@ limits_config:
   ingestion_burst_size_mb: 20
   max_concurrent_tail_requests: 20
   max_cache_freshness_per_query: 10m
-
-# Chunk store configuration
-chunk_store_config:
-  max_look_back_period: 0s
-
-table_manager:
-  retention_deletes_enabled: true
   retention_period: 30d
+compactor:
+  working_directory: /loki/compactor
+  shared_store: filesystem
+  retention_enabled: true
+  max_look_back_period: 0s
+table_manager:
+
 
 # Compactor configuration
 compactor:

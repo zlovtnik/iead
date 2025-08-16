@@ -21,10 +21,15 @@ scrape_configs:
           __path__: /var/log/app/*.log
 
     pipeline_stages:
-      # Parse timestamp
-      - timestamp:
-          source: timestamp
-          format: RFC3339Nano
+
+    # Extract timestamp from log line (RFC3339Nano)
+    - regex:
+      expression: '^(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)'
+
+    # Parse timestamp
+    - timestamp:
+      source: timestamp
+      format: RFC3339Nano
 
       # Extract log level
       - regex:
@@ -35,27 +40,18 @@ scrape_configs:
       # Extract request ID for tracing
       - regex:
           expression: 'request_id=(?P<request_id>[a-zA-Z0-9-]+)'
-      - labels:
-          request_id:
 
       # Extract user ID
       - regex:
           expression: 'user_id=(?P<user_id>\d+)'
-      - labels:
-          user_id:
 
       # Extract endpoint
       - regex:
           expression: 'endpoint="(?P<endpoint>[^"]+)"'
-      - labels:
-          endpoint:
 
       # Extract response time
       - regex:
           expression: 'response_time=(?P<response_time>\d+\.?\d*)ms'
-      - labels:
-          response_time:
-
   # Docker container logs
   - job_name: docker-containers
     static_configs:
@@ -118,17 +114,17 @@ scrape_configs:
           pid:
       - timestamp:
           source: timestamp
-          format: Jan 02 15:04:05
-
-  # Nginx/Traefik access logs
-  - job_name: traefik-access
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: traefik-access
-          environment: production
-          __path__: /var/log/traefik/*.log
+    pipeline_stages:
+      - regex:
+          expression: '(?P<timestamp>\w+ \d+ \d+:\d+:\d+) (?P<hostname>\S+) (?P<service>\S+)(\[(?P<pid>\d+)\])?: (?P<message>.*)'
+      - labels:
+          hostname:
+          service:
+          pid:
+      - timestamp:
+          source: timestamp
+          format: Jan _2 15:04:05
+          timezone: Local
 
     pipeline_stages:
       # Parse Traefik access logs
@@ -139,20 +135,18 @@ scrape_configs:
           method:
           status:
           remote_addr:
+    pipeline_stages:
+      # Parse Traefik access logs
+      - regex:
+          expression: '(?P<remote_addr>\S+) - (?P<remote_user>\S+) \[(?P<time_local>[^\]]+)\] "(?P<method>\S+) (?P<request>\S+) (?P<protocol>\S+)" (?P<status>\d+) (?P<body_bytes_sent>\d+) "(?P<http_referer>[^"]*)" "(?P<http_user_agent>[^"]*)" (?P<request_time>\d+\.?\d*)'
+      
+      - labels:
+          method:
+          status
       
       - timestamp:
           source: time_local
           format: '02/Jan/2006:15:04:05 -0700'
-
-  # Error logs
-  - job_name: error-logs
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: error-logs
-          environment: production
-          __path__: /var/log/app/error.log
 
     pipeline_stages:
       - json:
