@@ -31,7 +31,7 @@ WORKDIR /app
 RUN luarocks install luasql-sqlite3
 RUN luarocks install lua-cjson
 RUN luarocks install luasocket
-RUN luarocks install redis-lua || echo "Redis client installation failed - using memory fallback"
+RUN luarocks install redis-lua || echo "WARNING: redis-lua installation failed"
 RUN luarocks install luacheck
 RUN luarocks install busted
 
@@ -49,12 +49,18 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Lua rocks from builder
-COPY --from=backend-builder /usr/local/lib/lua /usr/local/lib/lua
-COPY --from=backend-builder /usr/local/share/lua /usr/local/share/lua
-COPY --from=backend-builder /usr/local/bin /usr/local/bin
+COPY --from=backend-builder /usr/local/lib/lua/5.1/luasql /usr/local/lib/lua/5.1/luasql
+COPY --from=backend-builder /usr/local/lib/lua/5.1/cjson.so /usr/local/lib/lua/5.1/cjson.so
+COPY --from=backend-builder /usr/local/lib/lua/5.1/socket /usr/local/lib/lua/5.1/socket
+COPY --from=backend-builder /usr/local/lib/lua/5.1/bcrypt.so /usr/local/lib/lua/5.1/bcrypt.so
+COPY --from=backend-builder /usr/local/share/lua/5.1/luasql /usr/local/share/lua/5.1/luasql
+COPY --from=backend-builder /usr/local/share/lua/5.1/cjson /usr/local/share/lua/5.1/cjson
+COPY --from=backend-builder /usr/local/share/lua/5.1/socket /usr/local/share/lua/5.1/socket
+COPY --from=backend-builder /usr/local/share/lua/5.1/bcrypt /usr/local/share/lua/5.1/bcrypt
+COPY --from=backend-builder /usr/local/bin/church-management /usr/local/bin/church-management
 
 # Create app user for security
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+
 
 WORKDIR /app
 
@@ -73,6 +79,7 @@ COPY --from=frontend-builder /app/frontend/static ./public/static/
 # Make scripts executable
 RUN chmod +x scripts/*.sh
 RUN chmod +x *.sh
+RUN chmod +x /app/bin/healthcheck.sh
 
 # Create necessary directories
 RUN mkdir -p /app/logs /app/tmp /app/uploads
@@ -80,7 +87,7 @@ RUN chown -R appuser:appuser /app
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8080/api/health || exit 1
+    CMD /usr/local/bin/healthcheck.sh
 
 # Switch to non-root user
 USER appuser
