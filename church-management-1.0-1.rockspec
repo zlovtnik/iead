@@ -15,12 +15,13 @@ description = {
    license = "MIT"
 }
 dependencies = {
-   "lua >= 5.1",
+   "lua >= 5.1, < 5.4",
    "luasql-sqlite3",
    "lua-cjson",
    "luasocket",
    "luafilesystem",
-   "bcrypt"
+   "bcrypt",
+   "fun"
 }
 build = {
    type = "builtin",
