@@ -74,6 +74,23 @@ jobs:
       run: lua scripts/coverage_analyzer.lua --html --output coverage-report.html --json --output coverage-summary.json
       continue-on-error: true
       
+    - name: Parse Test Results
+      id: test_results
+      run: lua scripts/parse_test_results.lua --file test-results.json --format github
+      continue-on-error: true
+      
+    - name: Generate JUnit XML
+      run: lua scripts/parse_test_results.lua --file test-results.json --format junit --output test-results.xml
+      continue-on-error: true
+      
+    - name: Publish Test Results
+      uses: dorny/test-reporter@v1
+      if: always()
+      with:
+        name: Backend Tests
+        path: test-results.xml
+        reporter: java-junit
+        
     - name: Upload Backend Test Results
       uses: actions/upload-artifact@v4
       if: always()
@@ -81,6 +98,7 @@ jobs:
         name: backend-test-results
         path: |
           test-results.json
+          test-results.xml
           coverage-report.html
           coverage-summary.json
           **/*.log

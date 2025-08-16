@@ -3,9 +3,20 @@
 -- Log Aggregation and Analysis System
 -- Comprehensive logging solution for Church Management System
 
-local json = require("cjson")
-local socket = require("socket")
-local lfs = require("lfs")
+local ok, json = pcall(require, "cjson")
+if not ok then
+    error("cjson module not found. Please install: luarocks install lua-cjson")
+end
+
+local ok, socket = pcall(require, "socket")
+if not ok then
+    error("socket module not found. Please install: luarocks install luasocket")
+end
+
+local ok, lfs = pcall(require, "lfs")
+if not ok then
+    error("lfs module not found. Please install: luarocks install luafilesystem")
+end
 
 local LogAggregator = {}
 LogAggregator.__index = LogAggregator
@@ -164,8 +175,12 @@ function LogAggregator:analyze_logs(since_time)
         top_ips = {},
         alerts = {}
     }
-    
-    since_time = since_time or (os.time() - self.aggregation_window)
+                -- Convert timestamp to epoch time for comparison
+                local entry_time = self:parse_timestamp(entry.timestamp)
+                
+                if entry_time and entry_time >= since_time then
+                    -- ...
+                end
     
     -- Analyze access logs
     local access_file = io.open(self.access_log, "r")

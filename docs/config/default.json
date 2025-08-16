@@ -1,0 +1,48 @@
+{
+  "version": "1.0.0",
+  "title": "Church Management System Documentation",
+  "description": "Comprehensive documentation for the church management system",
+  "base_url": "http://localhost:8080",
+  "output_dir": "docs/site",
+  "auth_types": ["bearer", "session"],
+  "output_formats": ["html", "openapi", "markdown"],
+  "templates": {
+    "base": "docs/templates/base.html",
+    "api": "docs/templates/api.md",
+    "setup": "docs/templates/setup.md",
+    "architecture": "docs/templates/architecture.md",
+    "deployment": "docs/templates/deployment.md"
+  },
+  "plugins": {
+    "api_docs": {
+      "enabled": true,
+      "include_examples": true,
+      "languages": ["curl", "javascript", "python"]
+    },
+    "architecture_docs": {
+      "enabled": true,
+      "generate_diagrams": true,
+      "diagram_format": "mermaid"
+    },
+    "setup_guide": {
+      "enabled": true,
+      "include_troubleshooting": true,
+      "platforms": ["windows", "macos", "linux"]
+    },
+    "deployment_docs": {
+      "enabled": true,
+      "include_monitoring": true,
+      "include_scaling": true
+    }
+  },
+  "site": {
+    "theme": "default",
+    "search_enabled": true,
+    "navigation": [
+      "Getting Started",
+      "API Reference", 
+      "Architecture",
+      "Deployment"
+    ]
+  }
+}

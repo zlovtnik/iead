@@ -110,13 +110,18 @@ if command -v sqlite3 &> /dev/null; then
     log_success "SQLite version: $SQLITE_VERSION"
     
     # Check if version is recent (3.35+ recommended)
-    MAJOR=$(echo $SQLITE_VERSION | cut -d'.' -f1)
-    MINOR=$(echo $SQLITE_VERSION | cut -d'.' -f2)
-    
-    if [[ $MAJOR -gt 3 ]] || [[ $MAJOR -eq 3 && $MINOR -ge 35 ]]; then
+    # Use proper version comparison
+    if printf '%s\n' "3.35.0" "$SQLITE_VERSION" | sort -V | head -n1 | grep -q "3.35.0"; then
         log_success "SQLite version is current"
     else
         log_warning "SQLite version $SQLITE_VERSION is older. Consider upgrading to 3.35+"
+    fi
+    # To initialize the database, use a valid SQL file (not schema.lua)
+    if [[ -f "src/db/schema.sql" ]]; then
+        sqlite3 church_management.db < src/db/schema.sql
+        log_success "Applied schema.sql to SQLite database."
+    else
+        log_warning "No schema.sql file found for SQLite initialization."
     fi
 else
     log_warning "SQLite not found"
@@ -149,12 +154,16 @@ log_info "Checking security configurations..."
 
 # Check for sensitive files
 SENSITIVE_FILES=(".env" "config/database.lua" "*.key" "*.pem")
+shopt -s nullglob
 for pattern in "${SENSITIVE_FILES[@]}"; do
-    if ls $pattern 1> /dev/null 2>&1; then
-        log_warning "Sensitive files found matching pattern: $pattern"
-        log_info "Ensure these files are in .gitignore and properly secured"
-    fi
+    for file in $pattern; do
+        if [ -e "$file" ]; then
+            log_warning "Sensitive file found: $file"
+            log_info "Ensure this file is in .gitignore and properly secured"
+        fi
+    done
 done
+shopt -u nullglob
 
 # Check .gitignore
 if [[ -f ".gitignore" ]]; then
@@ -211,9 +220,15 @@ echo "2. Fix any high/critical vulnerabilities immediately"
 echo "3. Plan updates for outdated dependencies"
 echo "4. Set up automated security scanning in CI/CD"
 echo ""
-
-# Exit with error code if critical issues found
-if [[ -f "public/audit-report.json" ]]; then
+    # Check if there are critical vulnerabilities
+   # Use jq for proper JSON parsing
+   if command -v jq &> /dev/null; then
+       CRITICAL_COUNT=$(jq '[.vulnerabilities[].severity | select(. == "critical")] | length' public/audit-report.json 2>/dev/null || echo "0")
+   else
+       # Fallback to grep if jq is not available
+       CRITICAL_COUNT=$(grep -o '"severity":"critical"' public/audit-report.json 2>/dev/null | wc -l || echo "0")
+   fi
+    if [[ $CRITICAL_COUNT -gt 0 ]]; then
     # Check if there are critical vulnerabilities
     CRITICAL_COUNT=$(cat public/audit-report.json 2>/dev/null | grep -c '"severity":"critical"' || echo "0")
     if [[ $CRITICAL_COUNT -gt 0 ]]; then

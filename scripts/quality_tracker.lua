@@ -4,8 +4,17 @@
 -- Part of Phase 4: Testing & Quality implementation
 -- Tracks code quality metrics over time and generates trend reports
 
-local json = require("cjson")
-local lfs = require("lfs")
+local function safe_require(modname)
+    local ok, mod = pcall(require, modname)
+    if not ok then
+        print(string.format("[quality_tracker] Error: Required Lua module '%s' is missing.", modname))
+        os.exit(1)
+    end
+    return mod
+end
+
+local json = safe_require("cjson")
+local lfs = safe_require("lfs")
 local os = os
 local io = io
 local string = string
@@ -37,26 +46,41 @@ function QualityTracker:calculate_complexity_metrics()
     }
     
     -- Scan Lua files
-    local function scan_directory(path, pattern)
+    local function scan_directory(root, pattern)
         local files = {}
-        for file in lfs.dir(path) do
-            if file ~= "." and file ~= ".." then
-                local file_path = path .. "/" .. file
-                local attr = lfs.attributes(file_path)
-                if attr.mode == "directory" then
-                    -- Recursively scan subdirectories
-                    local sub_files = scan_directory(file_path, pattern)
-                    for _, sub_file in ipairs(sub_files) do
-                        table.insert(files, sub_file)
+        local stack = {root}
+        while #stack > 0 do
+            local path = table.remove(stack)
+            local attr = lfs.attributes(path)
+            if not attr or attr.mode ~= "directory" then
+                print(string.format("[quality_tracker] Error: Path %s is not a directory or cannot be accessed.", path))
+            else
+                local ok, err = pcall(function()
+                    for file in lfs.dir(path) do
+                        if file ~= "." and file ~= ".." then
+                            local file_path = path .. "/" .. file
+                            file_path = file_path:gsub("//", "/")
+                            local ok_attr, attr = pcall(lfs.attributes, file_path)
+                            if not ok_attr or not attr or not attr.mode then
+                                print(string.format("[quality_tracker] Warning: Cannot stat %s", file_path))
+                            else
+                                if attr.mode == "directory" then
+                                    table.insert(stack, file_path)
+                                elseif attr.mode == "file" and file:match(pattern) then
+                                    table.insert(files, file_path)
+                                end
+                            end
+                        end
                     end
-                elseif file:match(pattern) then
-                    table.insert(files, file_path)
+                end)
+                if not ok then
+                    print(string.format("[quality_tracker] Warning: Cannot read directory %s: %s", path, err))
                 end
             end
         end
         return files
     end
-    
+
     local lua_files = scan_directory(self.project_root .. "/src", "%.lua$")
     
     for _, file_path in ipairs(lua_files) do
@@ -74,19 +98,30 @@ function QualityTracker:calculate_complexity_metrics()
             if line_count > metrics.max_lines_per_file then
                 metrics.max_lines_per_file = line_count
             end
-            
-            if line_count > 200 then
-                metrics.files_over_200_lines = metrics.files_over_200_lines + 1
-            end
-            
-            if line_count > 500 then
-                metrics.files_over_500_lines = metrics.files_over_500_lines + 1
-            end
         end
     end
     
     if metrics.total_files > 0 then
         metrics.avg_lines_per_file = math.floor(metrics.total_lines / metrics.total_files)
+    end
+    
+    -- Count files with excessive lines
+    for _, file_path in ipairs(lua_files) do
+        local file = io.open(file_path, "r")
+        if file then
+            local line_count = 0
+            for _ in file:lines() do
+                line_count = line_count + 1
+            end
+            file:close()
+            
+            if line_count > 200 then
+                metrics.files_over_200_lines = metrics.files_over_200_lines + 1
+            end
+            if line_count > 500 then
+                metrics.files_over_500_lines = metrics.files_over_500_lines + 1
+            end
+        end
     end
     
     return metrics
@@ -105,7 +140,26 @@ function QualityTracker:calculate_test_coverage()
     -- Run backend tests and capture coverage
     local backend_result = os.execute("cd " .. self.project_root .. " && lua scripts/run_tests.lua > /tmp/test_output.txt 2>&1")
     if backend_result == 0 then
-        coverage.backend_coverage = 85  -- Placeholder - would need actual coverage tool
+        local coverage_file = "/tmp/test_output.txt"
+        local f = io.open(coverage_file, "r")
+        if f then
+            local output = f:read("*all")
+            f:close()
+            -- Try to extract coverage percent (e.g., "Coverage: 87.5%" or similar)
+            local percent = string.match(output, "[Cc]overage:?%s*([%d%.]+)%%")
+            if percent then
+                coverage.backend_coverage = tonumber(percent)
+            else
+                coverage.backend_coverage = nil
+                print("[quality_tracker] Warning: Could not extract backend coverage percent from test output.")
+            end
+        else
+            coverage.backend_coverage = nil
+            print("[quality_tracker] Warning: Could not open backend test output file for coverage.")
+        end
+    else
+        coverage.backend_coverage = nil
+        print("[quality_tracker] Warning: Backend tests did not complete successfully.")
     end
     
     -- Check frontend test coverage if available
@@ -229,7 +283,12 @@ function QualityTracker:calculate_debt_metrics()
     
     -- Calculate overall debt ratio
     local total_comments = debt.todo_comments + debt.fixme_comments
-    debt.debt_ratio = total_comments / math.max(1, self.current_metrics.complexity.total_lines) * 100
+    local total_lines = 1
+    if self.current_metrics and self.current_metrics.complexity and self.current_metrics.complexity.total_lines then
+        total_lines = tonumber(self.current_metrics.complexity.total_lines) or 1
+        if total_lines <= 0 then total_lines = 1 end
+    end
+    debt.debt_ratio = total_comments / total_lines * 100
     
     return debt
 end
@@ -316,8 +375,10 @@ function QualityTracker:generate_report()
     
     -- Test Coverage
     print("🧪 TEST COVERAGE")
-    print(string.format("  Backend Coverage: %.1f%%", metrics.coverage.backend_coverage))
-    print(string.format("  Frontend Coverage: %.1f%%", metrics.coverage.frontend_coverage))
+    local backend_cov = tonumber(metrics.coverage.backend_coverage) or 0
+    local frontend_cov = tonumber(metrics.coverage.frontend_coverage) or 0
+    print(string.format("  Backend Coverage: %.1f%%", backend_cov))
+    print(string.format("  Frontend Coverage: %.1f%%", frontend_cov))
     print(string.format("  Passing Tests: %d", metrics.coverage.passing_tests))
     print(string.format("  Failing Tests: %d", metrics.coverage.failing_tests))
     print()
@@ -345,17 +406,21 @@ function QualityTracker:generate_report()
     
     -- Trends (if historical data available)
     if #historical_data > 1 then
-        print("📊 TRENDS")
-        local prev_metrics = historical_data[#historical_data - 1]
-        
-        local complexity_trend = metrics.complexity.total_lines - prev_metrics.complexity.total_lines
-        local coverage_trend = metrics.coverage.backend_coverage - prev_metrics.coverage.backend_coverage
-        local security_trend = metrics.security.security_score - prev_metrics.security.security_score
-        
-        print(string.format("  Code Growth: %+d lines", complexity_trend))
-        print(string.format("  Coverage Change: %+.1f%%", coverage_trend))
-        print(string.format("  Security Change: %+d points", security_trend))
-        print()
+    print("📊 TRENDS")
+    local prev_metrics = historical_data[#historical_data - 1]
+    local curr_lines = tonumber(metrics.complexity.total_lines) or 0
+    local prev_lines = tonumber(prev_metrics.complexity.total_lines) or 0
+    local curr_coverage = tonumber(metrics.coverage.backend_coverage) or 0
+    local prev_coverage = tonumber(prev_metrics.coverage.backend_coverage) or 0
+    local curr_security = tonumber(metrics.security.security_score) or 0
+    local prev_security = tonumber(prev_metrics.security.security_score) or 0
+    local complexity_trend = curr_lines - prev_lines
+    local coverage_trend = curr_coverage - prev_coverage
+    local security_trend = curr_security - prev_security
+    print(string.format("  Code Growth: %+d lines", complexity_trend))
+    print(string.format("  Coverage Change: %+.1f%%", coverage_trend))
+    print(string.format("  Security Change: %+d points", security_trend))
+    print()
     end
     
     -- Quality Score
@@ -373,8 +438,10 @@ function QualityTracker:calculate_quality_score(metrics)
     local score = 0
     
     -- Coverage contribution (30%)
-    score = score + (metrics.coverage.backend_coverage * 0.15)
-    score = score + (metrics.coverage.frontend_coverage * 0.15)
+    local backend_cov = tonumber(metrics.coverage.backend_coverage) or 0
+    local frontend_cov = tonumber(metrics.coverage.frontend_coverage) or 0
+    score = score + (backend_cov * 0.15)
+    score = score + (frontend_cov * 0.15)
     
     -- Security contribution (25%)
     score = score + (metrics.security.security_score * 0.25)

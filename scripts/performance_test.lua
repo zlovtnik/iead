@@ -66,16 +66,17 @@ local results = {
 local function time_request(endpoint)
   local start_time = socket.gettime()
   
-  local response_body, status_code = http.request(config.base_url .. endpoint.path)
-  
+  local response_body, status_code, response_headers, status_line = http.request(config.base_url .. endpoint.path)
+  local code_num = tonumber(status_code) or 0
+
   local end_time = socket.gettime()
   local response_time = (end_time - start_time) * 1000 -- Convert to milliseconds
-  
+
   return {
-    status_code = status_code or 0,
+    status_code   = code_num,
     response_time = response_time,
-    body = response_body,
-    success = status_code == endpoint.expected_status
+    body          = response_body,
+    success       = code_num == endpoint.expected_status
   }
 end
 
@@ -190,11 +191,12 @@ function PerformanceTest.print_summary(duration)
   print(string.format("Total Requests: %d", results.total_requests))
   print(string.format("Successful Requests: %d (%.1f%%)", 
     results.successful_requests, 
-    (results.successful_requests / results.total_requests) * 100
+    results.total_requests > 0 and (results.successful_requests / results.total_requests) * 100 or 0
   ))
-  print(string.format("Failed Requests: %d (%.1f%%)", 
-    results.failed_requests, 
-    (results.failed_requests / results.total_requests) * 100
+
+  print(string.format("Failed Requests: %d (%.1f%%)",
+    results.failed_requests,
+    results.total_requests > 0 and (results.failed_requests / results.total_requests) * 100 or 0
   ))
   
   if #results.response_times > 0 then
@@ -228,12 +230,13 @@ function PerformanceTest.print_summary(duration)
       endpoint.total_requests,
       endpoint.avg_time,
       endpoint.p95_time,
-      (endpoint.successful_requests / endpoint.total_requests) * 100
+      endpoint.total_requests > 0 and (endpoint.successful_requests / endpoint.total_requests) * 100 or 0
     ))
   end
   
   print()
   
+  -- Performance recommendations
   -- Performance recommendations
   print("🎯 Performance Recommendations:")
   for _, endpoint in ipairs(results.endpoints) do
@@ -245,21 +248,9 @@ function PerformanceTest.print_summary(duration)
       print(string.format("• Investigate %s - 95th percentile is %.2fms", 
         endpoint.name, endpoint.p95_time))
     end
-    if (endpoint.successful_requests / endpoint.total_requests) < 0.99 then
+    if endpoint.total_requests > 0 and (endpoint.successful_requests / endpoint.total_requests) < 0.99 then
       print(string.format("• Fix reliability issues in %s - %.1f%% success rate", 
         endpoint.name, (endpoint.successful_requests / endpoint.total_requests) * 100))
-    end
-  end
-  
-  if results.failed_requests == 0 and #results.response_times > 0 then
-    local sum = 0
-    for _, time in ipairs(results.response_times) do
-      sum = sum + time
-    end
-    local overall_avg = sum / #results.response_times
-    
-    if overall_avg < 100 then
-      print("✅ Excellent performance! All endpoints performing within targets.")
     end
   end
 end
@@ -267,9 +258,12 @@ end
 -- Run tests if this file is executed directly
 if debug.getinfo(2) == nil then
   -- Check if server is running
-  local response, status = http.request(config.base_url .. "/health")
-  if not response or status ~= 200 then
+  local response, code = http.request(config.base_url .. "/health")
+  local code_num = tonumber(code)
+  if not response or code_num ~= 200 then
     print("❌ Error: Server not responding at " .. config.base_url)
+    print("   Response: " .. tostring(response or "nil"))
+    print("   Status code: " .. tostring(code) .. " (expected 200)")
     print("Please start the server before running performance tests.")
     os.exit(1)
   end

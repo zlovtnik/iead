@@ -166,23 +166,24 @@ cat > "$SUMMARY_FILE" << EOF
 
 ## Test Results
 
+
 ### Backend Tests
-- Unit Tests: $([ -f "${REPORT_DIR}/Lua_Unit_Tests.log" ] && echo "✅ PASSED" || echo "❌ FAILED")
-- Security Tests: $([ -f "${REPORT_DIR}/Lua_Security_Tests.log" ] && echo "✅ PASSED" || echo "❌ FAILED")
-- Performance Tests: $([ -f "${REPORT_DIR}/Lua_Performance_Tests.log" ] && echo "✅ PASSED" || echo "❌ FAILED")
+Unit Tests: $(grep -q "ALL TESTS PASSED" "${REPORT_DIR}/Lua_Unit_Tests.log" 2>/dev/null && echo "✅ PASSED" || echo "❌ FAILED")
+Security Tests: $(grep -q "ALL TESTS PASSED" "${REPORT_DIR}/Lua_Security_Tests.log" 2>/dev/null && echo "✅ PASSED" || echo "❌ FAILED")
+Performance Tests: $(grep -q "PERFORMANCE OK" "${REPORT_DIR}/Lua_Performance_Tests.log" 2>/dev/null && echo "✅ PASSED" || echo "❌ FAILED")
 
 ### Frontend Tests
-- Unit Tests: $([ -f "${REPORT_DIR}/Frontend_Unit_Tests.log" ] && echo "✅ PASSED" || echo "❌ FAILED")
-- Type Checking: $([ -f "${REPORT_DIR}/Frontend_Type_Checking.log" ] && echo "✅ PASSED" || echo "❌ FAILED")
-- Linting: $([ -f "${REPORT_DIR}/Frontend_Linting.log" ] && echo "✅ PASSED" || echo "❌ FAILED")
+Unit Tests: $(grep -q "ALL TESTS PASSED" "${REPORT_DIR}/Frontend_Unit_Tests.log" 2>/dev/null && echo "✅ PASSED" || echo "❌ FAILED")
+Type Checking: $(grep -q "Type check passed" "${REPORT_DIR}/Frontend_Type_Checking.log" 2>/dev/null && echo "✅ PASSED" || echo "❌ FAILED")
+Linting: $(grep -q "No lint errors" "${REPORT_DIR}/Frontend_Linting.log" 2>/dev/null && echo "✅ PASSED" || echo "❌ FAILED")
 
 ### Quality Checks
-- Static Analysis: $([ -f "${REPORT_DIR}/Lua_Static_Analysis.log" ] && echo "✅ PASSED" || echo "❌ FAILED")
-- Bundle Analysis: $([ -f "${REPORT_DIR}/Frontend_Bundle_Analysis.log" ] && echo "✅ PASSED" || echo "❌ FAILED")
+Static Analysis: $(grep -q "No issues found" "${REPORT_DIR}/Lua_Static_Analysis.log" 2>/dev/null && echo "✅ PASSED" || echo "❌ FAILED")
+Bundle Analysis: $(grep -q "Bundle size OK" "${REPORT_DIR}/Frontend_Bundle_Analysis.log" 2>/dev/null && echo "✅ PASSED" || echo "❌ FAILED")
 
 ### Security Audits
-- Backend Security: $([ -f "${REPORT_DIR}/Backend_Security_Audit.log" ] && echo "✅ PASSED" || echo "❌ FAILED")
-- Frontend Dependencies: $([ -f "${REPORT_DIR}/Frontend_Dependency_Audit.log" ] && echo "✅ PASSED" || echo "❌ FAILED")
+Backend Security: $(grep -q "No vulnerabilities found" "${REPORT_DIR}/Backend_Security_Audit.log" 2>/dev/null && echo "✅ PASSED" || echo "❌ FAILED")
+Frontend Dependencies: $(grep -q "No vulnerabilities found" "${REPORT_DIR}/Frontend_Dependency_Audit.log" 2>/dev/null && echo "✅ PASSED" || echo "❌ FAILED")
 
 ## Detailed Logs
 

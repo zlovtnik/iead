@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}} - {{site_title}}</title>
+    <meta name="description" content="{{description}}">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{base_url}}/assets/css/main.css">
+    <link rel="stylesheet" href="{{base_url}}/assets/css/syntax.css">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="{{base_url}}/assets/favicon.svg">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="site-title">
+                    <a href="{{base_url}}/">{{site_title}}</a>
+                </h1>
+                <nav class="main-nav">
+                    {{#navigation}}
+                    <a href="{{url}}" class="nav-link {{#active}}active{{/active}}">{{title}}</a>
+                    {{/navigation}}
+                </nav>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-wrapper">
+                <!-- Sidebar -->
+                <aside class="sidebar">
+                    <div class="sidebar-content">
+                        {{#sidebar_sections}}
+                        <section class="sidebar-section">
+                            <h3 class="sidebar-title">{{title}}</h3>
+                            <ul class="sidebar-list">
+                                {{#items}}
+                                <li><a href="{{url}}" class="sidebar-link {{#active}}active{{/active}}">{{title}}</a></li>
+                                {{/items}}
+                            </ul>
+                        </section>
+                        {{/sidebar_sections}}
+                    </div>
+                </aside>
+
+                <!-- Content -->
+                <article class="content">
+                    <div class="content-header">
+                        <h1 class="page-title">{{title}}</h1>
+                        {{#subtitle}}
+                        <p class="page-subtitle">{{subtitle}}</p>
+                        {{/subtitle}}
+                        {{#last_updated}}
+                        <p class="last-updated">Last updated: {{last_updated}}</p>
+                        {{/last_updated}}
+                    </div>
+                    
+                    <div class="content-body">
+                        {{content}}
+                    </div>
+                    
+                    {{#show_edit_link}}
+                    <div class="content-footer">
+                        <a href="{{edit_url}}" class="edit-link">Edit this page</a>
+                    </div>
+                    {{/show_edit_link}}
+                </article>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <p>&copy; {{year}} {{site_title}}. Generated with Documentation System v{{version}}.</p>
+                {{#github_url}}
+                <p><a href="{{github_url}}" target="_blank">View on GitHub</a></p>
+                {{/github_url}}
+            </div>
+        </footer>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="{{base_url}}/assets/js/main.js"></script>
+    {{#search_enabled}}
+    <script src="{{base_url}}/assets/js/search.js"></script>
+    {{/search_enabled}}
+</body>
+</html>

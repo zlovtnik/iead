@@ -90,21 +90,39 @@ function HealthChecker:check_redis()
         end
         
         -- Send PING command
-        sock:send("PING\r\n")
-        local response = sock:receive()
-        sock:close()
-        
-        if response and response:match("PONG") then
-            return {
-                status = "healthy",
-                message = "Redis connection successful",
-                host = redis_host,
-                port = redis_port,
-                response_time_ms = 0
-            }
-        else
-            error("Redis did not respond with PONG")
-        end
+            -- Send RESP PING command
+            local resp_ping = "*1\r\n$4\r\nPING\r\n"
+            local bytes_sent, send_err = sock:send(resp_ping)
+            if not bytes_sent then
+                sock:close()
+                return {
+                    status = "unhealthy",
+                    message = "Redis PING send error: " .. tostring(send_err),
+                }
+            end
+            local response, recv_err = sock:receive()
+            sock:close()
+            if not response then
+                return {
+                    status = "unhealthy",
+                    message = "Redis PING receive error: " .. tostring(recv_err),
+                }
+            end
+            -- Validate RESP simple string response
+            if response == "+PONG" then
+                return {
+                    status = "healthy",
+                    message = "Redis connection successful",
+                    host = redis_host,
+                    port = redis_port,
+                    response_time_ms = 0
+                }
+            else
+                return {
+                    status = "unhealthy",
+                    message = "Redis PING failed: " .. tostring(response),
+                }
+            end
     end)
     
     if success then
@@ -347,14 +365,14 @@ function HealthChecker:run_all_checks()
         end
     end
     
-    -- Calculate uptime
-    local uptime_seconds = socket.gettime() - self.start_time
+    -- Calculate check session duration (not application uptime)
+    local session_duration_seconds = socket.gettime() - self.start_time
     
     -- Build overall response
     local health_response = {
         status = overall_status,
         timestamp = os.date("%Y-%m-%dT%H:%M:%SZ"),
-        uptime_seconds = math.floor(uptime_seconds),
+        uptime_seconds = math.floor(session_duration_seconds),
         version = os.getenv("APP_VERSION") or "1.0.0",
         environment = os.getenv("NODE_ENV") or "development",
         checks = self.results,

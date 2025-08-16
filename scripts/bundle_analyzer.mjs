@@ -5,10 +5,10 @@
  * Analyzes the built frontend bundle for size, dependencies, and performance
  */
 
-import { readFileSync, readdirSync, statSync } from 'fs';
+import { readFileSync, readdirSync, statSync, writeFileSync } from 'fs';
 import { join, extname } from 'path';
+import { pathToFileURL } from 'url';
 import { gzipSync } from 'zlib';
-
 const BUNDLE_DIR = './dist';
 const MAX_BUNDLE_SIZE = 500 * 1024; // 500KB
 const MAX_CHUNK_SIZE = 200 * 1024; // 200KB
@@ -139,7 +139,7 @@ class BundleAnalyzer {
 
     // Check individual chunk sizes
     for (const file of this.results.files) {
-      if (file.type === 'javascript' && file.size > MAX_CHUNK_SIZE) {
+      if ((file.type === 'javascript' || file.type === 'vendor') && file.size > MAX_CHUNK_SIZE) {
         this.results.warnings.push({
           type: 'chunk-size',
           message: `Large JavaScript chunk: ${file.path} (${this.formatSize(file.size)})`
@@ -160,8 +160,10 @@ class BundleAnalyzer {
   }
 
   checkForDuplicates() {
-    const jsFiles = this.results.files.filter(f => f.type === 'javascript');
-    const suspiciousFiles = jsFiles.filter(f => 
+    const jsLikeFiles = this.results.files.filter(
+      f => f.type === 'javascript' || f.type === 'vendor'
+    );
+    const suspiciousFiles = jsLikeFiles.filter(f =>
       f.path.includes('vendor') || f.path.includes('chunk')
     );
 
@@ -197,9 +199,12 @@ class BundleAnalyzer {
     }
 
     // General recommendations based on compression ratio
-    const compressionRatio = this.results.gzipSize / this.results.totalSize;
-    if (compressionRatio > 0.7) {
-      this.results.recommendations.push("Low compression ratio detected. Enable better compression or optimize assets");
+    // General recommendations based on compression ratio
+    if (this.results.totalSize > 0) {
+      const compressionRatio = this.results.gzipSize / this.results.totalSize;
+      if (compressionRatio > 0.7) {
+        this.results.recommendations.push("Low compression ratio detected. Enable better compression or optimize assets");
+      }
     }
   }
 
@@ -216,7 +221,10 @@ class BundleAnalyzer {
     console.log('='.repeat(50));
     
     // Overall statistics
-    console.log('\n📈 Overall Statistics:');
+    const compressionRatio = this.results.totalSize > 0
+      ? ((this.results.gzipSize / this.results.totalSize) * 100).toFixed(1)
+      : 'N/A';
+    console.log(`Compression Ratio: ${compressionRatio}%`);
     console.log(`Total Size: ${this.formatSize(this.results.totalSize)}`);
     console.log(`Gzipped Size: ${this.formatSize(this.results.gzipSize)}`);
     console.log(`Compression Ratio: ${((this.results.gzipSize / this.results.totalSize) * 100).toFixed(1)}%`);
@@ -267,8 +275,6 @@ class BundleAnalyzer {
     } else {
       console.log('❌ Bundle optimization requires significant improvement');
     }
-  }
-
   calculatePerformanceScore() {
     let score = 100;
 
@@ -278,9 +284,11 @@ class BundleAnalyzer {
     }
 
     // Deduct points for poor compression
-    const compressionRatio = this.results.gzipSize / this.results.totalSize;
-    if (compressionRatio > 0.8) {
-      score -= 15;
+    if (this.results.totalSize > 0) {
+      const compressionRatio = this.results.gzipSize / this.results.totalSize;
+      if (compressionRatio > 0.8) {
+        score -= 15;
+      }
     }
 
     // Deduct points for warnings
@@ -291,7 +299,9 @@ class BundleAnalyzer {
       score -= 10;
     }
 
-    return Math.max(0, score);
+    // Clamp to [0, 100]
+    score = Math.max(0, Math.min(100, score));
+    return score;
   }
 
   async saveReport() {
@@ -308,7 +318,31 @@ class BundleAnalyzer {
 
 // Run analysis if this file is executed directly
 if (process.argv[1] === new URL(import.meta.url).pathname) {
-  const analyzer = new BundleAnalyzer();
+// Run analysis if this file is executed directly
+if (process.argv[1] === new URL(import.meta.url).pathname) {
+  (async () => {
+    const analyzer = new BundleAnalyzer();
+    
+    try {
+      analyzer.analyzeBundleDirectory();
+      analyzer.printReport();
+      await analyzer.saveReport();
+      
+      // Exit with error code if there are critical issues
+      const criticalWarnings = analyzer.results.warnings.filter(w =>
+        w.type === 'size' || w.type === 'gzip-size'
+      );
+      
+      if (criticalWarnings.length > 0) {
+        console.log('\n❌ Critical bundle size issues detected!');
+        process.exit(1);
+      }
+    } catch (error) {
+      console.error(`❌ Bundle analysis failed: ${error.message}`);
+      process.exit(1);
+    }
+  })();
+}
   
   try {
     analyzer.analyzeBundleDirectory();

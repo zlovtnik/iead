@@ -117,7 +117,32 @@ validate_environment() {
     fi
     
     # Validate required environment variables
-    source "$env_file"
+    # Validate file permissions (not world/group writable)
+    if [[ $(stat -c "%a" "$env_file" 2>/dev/null || stat -f "%Lp" "$env_file" 2>/dev/null) =~ [2367]$ ]]; then
+        error_exit "Environment file $env_file has unsafe permissions"
+    fi
+
+    # Parse and export only safe KEY=VALUE pairs
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        # Skip blank lines and comments
+        [[ -z "$line" || "$line" =~ ^# ]] && continue
+        # Only allow KEY=VALUE pairs, reject lines with metacharacters
+        if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+            key="${BASH_REMATCH[1]}"
+            value="${BASH_REMATCH[2]}"
+            # Reject values with shell metacharacters or command substitution
+            if [[ "$value" =~ [\`\$\(\)\{\}\;\&\|\>] ]]; then
+                warn "Skipping unsafe env line: $line"
+                continue
+            fi
+            # Remove surrounding quotes if present
+            value="${value%\"}"
+            value="${value#\"}"
+            export "$key"="$value"
+        else
+            warn "Skipping malformed env line: $line"
+        fi
+    done < "$env_file"
     
     local required_vars=("SESSION_SECRET" "JWT_SECRET")
     for var in "${required_vars[@]}"; do
@@ -172,7 +197,14 @@ create_backup() {
         info "Skipping backup for non-production environment"
         return 0
     fi
-    
+# Configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+ENVIRONMENT="${1:-production}"
+DOCKER_COMPOSE_FILE="docker-compose.${ENVIRONMENT}.yml"
+BACKUP_DIR="/opt/church_management/backups"
+LOG_FILE="/var/log/church_management_deploy.log"
+rollback_allowed=false
     step "Creating system backup"
     
     local backup_name="backup-$(date +%Y%m%d_%H%M%S)"
@@ -182,11 +214,17 @@ create_backup() {
     mkdir -p "$backup_path"
     
     # Backup database if running
+    # Backup database if running
     if docker-compose -f "$PROJECT_ROOT/$DOCKER_COMPOSE_FILE" ps app | grep -q "Up"; then
         info "Backing up database"
+        # Ensure backup directory exists in container
+        docker-compose -f "$PROJECT_ROOT/$DOCKER_COMPOSE_FILE" exec -T app \
+            mkdir -p "/app/backups/$backup_name" || warn "Failed to create backup directory in container"
+
+        # Backup database
         docker-compose -f "$PROJECT_ROOT/$DOCKER_COMPOSE_FILE" exec -T app \
             sqlite3 /app/data/church_management.db ".backup /app/backups/$backup_name/database.db" || \
-            warn "Database backup failed"
+            warn "Database backup failed - continuing deployment"
     fi
     
     # Backup uploads directory
@@ -245,10 +283,19 @@ update_code() {
             ;;
         staging)
             target_branch="develop"
-            ;;
-        *)
-            target_branch="develop"
-            ;;
+    info "Pulling latest changes from $target_branch"
+-    git fetch origin
+-    git checkout "$target_branch"
+    git fetch origin || error_exit "Failed to fetch from remote repository"
+    git checkout "$target_branch" || error_exit "Failed to checkout $target_branch"
+
+    # Check for local changes that might conflict
+    if ! git diff --quiet HEAD; then
+        warn "Local changes detected, stashing them"
+        git stash push -m "Auto-stash before deployment $(date)"
+    fi
+
+    git pull origin "$target_branch" || error_exit "Failed to pull latest changes"
     esac
     
     info "Pulling latest changes from $target_branch"
@@ -310,24 +357,14 @@ run_migrations() {
     info "Running database migrations"
     docker-compose -f "$DOCKER_COMPOSE_FILE" run --rm app lua scripts/migrate.lua migrate
     
-    success "Database migrations completed"
-}
-
-# Deploy application
-deploy_application() {
-    step "Deploying application"
-    
-    cd "$PROJECT_ROOT"
-    
-    # Stop existing services
-    info "Stopping existing services"
-    docker-compose -f "$DOCKER_COMPOSE_FILE" down
-    
     # Start services
     info "Starting services"
     if [[ "$ENVIRONMENT" == "production" ]]; then
-        # Production: rolling update with multiple replicas
-        docker-compose -f "$DOCKER_COMPOSE_FILE" up -d --scale app=2
+        # Production: rolling update to minimize downtime
+        info "Performing rolling update for production"
+        docker-compose -f "$DOCKER_COMPOSE_FILE" up -d --scale app=2 --no-recreate || {
+    success "Application deployment initiated"
+}
     else
         # Development/Staging: simple deployment
         docker-compose -f "$DOCKER_COMPOSE_FILE" up -d
@@ -351,8 +388,22 @@ health_check() {
         sleep "$interval"
         
         # Check if containers are running
-        if ! docker-compose -f "$PROJECT_ROOT/$DOCKER_COMPOSE_FILE" ps | grep -q "Up"; then
-            warn "Some containers are not running"
+        # Check if required services are running
+        local required_services=("$APP_SERVICE")
+        local running_services
+        running_services=$(docker-compose -f "$PROJECT_ROOT/$DOCKER_COMPOSE_FILE" ps --services --filter "status=running")
+        local all_running=true
+        for svc in "${required_services[@]}"; do
+            if ! echo "$running_services" | grep -q "^$svc$"; then
+                warn "Required service '$svc' is not running"
+                all_running=false
+            fi
+# Deployment settings
+DEFAULT_TIMEOUT=300
+HEALTH_CHECK_RETRIES=10
+HEALTH_CHECK_INTERVAL=30
+APP_SERVICE="app"
+        if [[ "$all_running" != true ]]; then
             retries=$((retries + 1))
             continue
         fi
@@ -402,6 +453,7 @@ post_deployment() {
     echo "$(date -Iseconds),deployment,success,$ENVIRONMENT,$(git rev-parse HEAD 2>/dev/null || echo 'unknown')" >> "$metrics_file"
     
     success "Post-deployment tasks completed"
+    rollback_allowed=false
 }
 
 # Rollback function
@@ -421,8 +473,12 @@ rollback() {
     tar -xzf "${BACKUP_NAME}.tar.gz"
     
     # Restore database
+    # Restore database
     if [[ -f "$BACKUP_NAME/database.db" ]]; then
-        cp "$BACKUP_NAME/database.db" "$PROJECT_ROOT/church_management.db"
+        # Restore database to the correct location inside container volume
+        docker-compose -f "$PROJECT_ROOT/$DOCKER_COMPOSE_FILE" run --rm app \
+            cp "/app/backups/$BACKUP_NAME/database.db" "/app/data/church_management.db" || \
+            warn "Failed to restore database"
     fi
     
     # Restore uploads
@@ -457,10 +513,23 @@ cleanup_backups() {
     success "Backup cleanup completed"
 }
 
+# Error handler for trap
+on_error() {
+    local line="$1"
+    local exit_code="$2"
+    warn "Error at line $line (exit code $exit_code)"
+    if [[ "$rollback_allowed" == true ]]; then
+        rollback
+    else
+        warn "Rollback not permitted at this stage. Performing safe cleanup."
+        # Add any safe cleanup or logging here
+    fi
+}
+
 # Main deployment flow
 main() {
-    # Trap errors for rollback
-    trap 'rollback' ERR
+    # Trap errors for conditional rollback
+    trap 'on_error $LINENO $?' ERR
     
     check_permissions
     validate_environment
@@ -469,7 +538,10 @@ main() {
     update_code
     update_images
     run_migrations
-    deploy_application
+    update_code
+    update_images
+    run_migrations
+    health_check
     health_check
     post_deployment
     cleanup_backups

@@ -1,11 +1,12 @@
-    #!/usr/bin/env lua
+#!/usr/bin/env lua
 
 -- Database Migration System for Church Management
 -- Handles schema updates and data migrations between versions
 
 local sqlite3 = require("luasql.sqlite3")
 local json = require("cjson")
-local lfs = require("lfs")
+ RUN luarocks install luasocket
+ RUN luarocks install luafilesystem
 
 local DatabaseMigrator = {}
 DatabaseMigrator.__index = DatabaseMigrator
@@ -114,14 +115,8 @@ function DatabaseMigrator:execute_migration(migration)
     self.conn:execute("BEGIN TRANSACTION")
     
     -- Load and execute the migration
-    local chunk, err = loadstring(migration.content)
-    if not chunk then
-        self.conn:execute("ROLLBACK")
-        error("Failed to load migration " .. migration.version .. ": " .. err)
-    end
-    
-    -- Set up environment for migration
-    local migration_env = {
+    -- Safer migration execution
+    local safe_env = {
         conn = self.conn,
         execute = function(sql) return self.conn:execute(sql) end,
         query = function(sql)
@@ -137,24 +132,40 @@ function DatabaseMigrator:execute_migration(migration)
             end
             return rows
         end,
-        print = print
+        print = print,
+        tonumber = tonumber,
+        tostring = tostring,
+        pairs = pairs,
+        ipairs = ipairs,
+        table = { insert = table.insert, remove = table.remove, sort = table.sort },
+        string = { match = string.match, gsub = string.gsub, find = string.find, format = string.format, lower = string.lower, upper = string.upper },
+        math = { abs = math.abs, floor = math.floor, ceil = math.ceil, min = math.min, max = math.max },
     }
-    setfenv(chunk, migration_env)
-    
-    -- Execute migration
-    local success, err = pcall(chunk)
+    -- Remove dangerous globals
+    local chunk, err = load(migration.content, "migration", "t", safe_env)
+    if not chunk then
+        self.conn:execute("ROLLBACK")
+        print("[migrate] Migration load error: " .. tostring(err))
+        error("Failed to load migration " .. migration.version .. ": " .. err)
+    end
+    local success, exec_err = pcall(chunk)
     if not success then
         self.conn:execute("ROLLBACK")
-        error("Migration " .. migration.version .. " failed: " .. err)
+        print("[migrate] Migration execution error: " .. tostring(exec_err))
+        error("Migration " .. migration.version .. " failed: " .. tostring(exec_err))
     end
+
     
     -- Record migration
-    local insert_migration = string.format([[
-        INSERT INTO schema_migrations (version, description, checksum)
-        VALUES (%d, '%s', '%s')
-    ]], migration.version, migration.description:gsub("'", "''"), migration.checksum)
-    
-    local result = self.conn:execute(insert_migration)
+    local stmt = self.conn:prepare(
+        "INSERT INTO schema_migrations (version, description, checksum) VALUES (?, ?, ?)"
+    )
+    if not stmt then
+        self.conn:execute("ROLLBACK")
+        error("Failed to prepare migration insert statement")
+    end
+    local result = stmt:execute(migration.version, migration.description, migration.checksum)
+    stmt:close()
     if not result then
         self.conn:execute("ROLLBACK")
         error("Failed to record migration " .. migration.version)
@@ -243,13 +254,19 @@ function DatabaseMigrator:rollback(target_version)
         print("Cannot rollback to version " .. target_version .. " (current: " .. self.current_version .. ")")
         return
     end
-    
+
+    -- Warn that schema changes aren’t actually reversed
+    print("WARNING: This rollback only removes migration records.")
+    print("It does NOT undo the actual database schema changes!")
+    print("You must manually reverse the database changes or restore from backup.")
+    print()
+
     -- Get migrations to rollback (in reverse order)
     local cursor = self.conn:execute(string.format([[
         SELECT version, description FROM schema_migrations 
         WHERE version > %d ORDER BY version DESC
     ]], target_version))
-    
+
     local migrations_to_rollback = {}
     if cursor then
         local row = cursor:fetch({}, "a")
