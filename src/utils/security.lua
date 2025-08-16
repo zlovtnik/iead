@@ -46,18 +46,68 @@ function security.verify_password(password, hash)
     return success and result
 end
 
+-- Generate a cryptographically secure random number between 1 and max
+-- Uses OS CSPRNG (/dev/urandom) with rejection sampling to avoid modulo bias
+-- @param max number Maximum value (inclusive)
+-- @return number Random number between 1 and max
+local function secure_random(max)
+    if max <= 1 then return 1 end
+    
+    -- Try to use OS CSPRNG (/dev/urandom)
+    local urandom = io.open("/dev/urandom", "rb")
+    if not urandom then
+        -- Fallback to math.random (non-cryptographic)
+        -- Note: This fallback provides no cryptographic guarantees
+        return math.random(1, max)
+    end
+    
+    -- Calculate number of bytes needed
+    local nbytes = 1
+    local range = 256
+    while range < max do
+        nbytes = nbytes + 1
+        range = range * 256
+    end
+    
+    -- Calculate rejection threshold to avoid modulo bias
+    local limit = math.floor(range / max) * max
+    
+    local result
+    repeat
+        local bytes = urandom:read(nbytes)
+        if not bytes or #bytes < nbytes then
+            -- Fallback if read fails
+            urandom:close()
+            return math.random(1, max)
+        end
+        
+        -- Convert bytes to number
+        local val = 0
+        for i = 1, #bytes do
+            val = val * 256 + bytes:byte(i)
+        end
+        
+        -- Accept value if it's within the unbiased range
+        if val < limit then
+            result = (val % max) + 1
+            break
+        end
+        -- Otherwise, retry to avoid modulo bias
+    until false
+    
+    urandom:close()
+    return result
+end
+
 -- Generate a cryptographically secure random token
 -- @return string Hex encoded random token
 function security.generate_secure_token()
-    -- Seed random number generator with current time and process info
-    math.randomseed(os.time() + (os.clock() * 1000000))
-    
     local chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
     local result = {}
     
     -- Generate a token that's twice the TOKEN_LENGTH for better entropy
     for i = 1, TOKEN_LENGTH * 2 do
-        local rand_index = math.random(1, #chars)
+        local rand_index = secure_random(#chars)
         result[#result + 1] = chars:sub(rand_index, rand_index)
     end
     
@@ -182,19 +232,23 @@ function security.generate_secure_password(length)
     
     -- Add at least one character from each required set
     if REQUIRE_LOWERCASE then
-        password[#password + 1] = lowercase:sub(math.random(1, #lowercase), math.random(1, #lowercase))
+        local idx = secure_random(#lowercase)
+        password[#password + 1] = lowercase:sub(idx, idx)
     end
     
     if REQUIRE_UPPERCASE then
-        password[#password + 1] = uppercase:sub(math.random(1, #uppercase), math.random(1, #uppercase))
+        local idx = secure_random(#uppercase)
+        password[#password + 1] = uppercase:sub(idx, idx)
     end
     
     if REQUIRE_DIGIT then
-        password[#password + 1] = digits:sub(math.random(1, #digits), math.random(1, #digits))
+        local idx = secure_random(#digits)
+        password[#password + 1] = digits:sub(idx, idx)
     end
     
     if REQUIRE_SPECIAL then
-        password[#password + 1] = special:sub(math.random(1, #special), math.random(1, #special))
+        local idx = secure_random(#special)
+        password[#password + 1] = special:sub(idx, idx)
     end
     
     -- Fill remaining length with random characters from all sets
@@ -204,12 +258,13 @@ function security.generate_secure_password(length)
     end
     
     for i = #password + 1, length do
-        password[i] = all_chars:sub(math.random(1, #all_chars), math.random(1, #all_chars))
+        local idx = secure_random(#all_chars)
+        password[i] = all_chars:sub(idx, idx)
     end
     
     -- Shuffle the password array to randomize character positions
     for i = #password, 2, -1 do
-        local j = math.random(1, i)
+        local j = secure_random(i)
         password[i], password[j] = password[j], password[i]
     end
     

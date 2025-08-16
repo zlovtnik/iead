@@ -1,0 +1,197 @@
+/* Syntax Highlighting CSS */
+
+/* Code block syntax highlighting */
+.highlight {
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    overflow-x: auto;
+}
+
+/* Language-specific styling */
+.language-bash .highlight,
+.language-shell .highlight {
+    background-color: #2d3748;
+    color: #e2e8f0;
+}
+
+.language-json .highlight {
+    background-color: #1a202c;
+    color: #e2e8f0;
+}
+
+.language-lua .highlight {
+    background-color: #2d3748;
+    color: #e2e8f0;
+}
+
+/* Syntax tokens */
+.token.comment {
+    color: #718096;
+    font-style: italic;
+}
+
+.token.string {
+    color: #38b2ac;
+}
+
+.token.number {
+    color: #ed8936;
+}
+
+.token.boolean {
+    color: #9f7aea;
+}
+
+.token.keyword {
+    color: #4299e1;
+    font-weight: bold;
+}
+
+.token.function {
+    color: #48bb78;
+}
+
+.token.variable {
+    color: #ed8936;
+}
+
+.token.operator {
+    color: #a0aec0;
+}
+
+.token.punctuation {
+    color: #a0aec0;
+}
+
+/* API documentation specific */
+.http-method {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    border-radius: 3px;
+    font-weight: bold;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+}
+
+.http-method.get {
+    background-color: #48bb78;
+    color: white;
+}
+
+.http-method.post {
+    background-color: #4299e1;
+    color: white;
+}
+
+.http-method.put {
+    background-color: #ed8936;
+    color: white;
+}
+
+.http-method.delete {
+    background-color: #f56565;
+    color: white;
+}
+
+.http-method.patch {
+    background-color: #9f7aea;
+    color: white;
+}
+
+/* Status codes */
+.status-code {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    border-radius: 3px;
+    font-weight: bold;
+    font-size: 0.8rem;
+}
+
+.status-code.success {
+    background-color: #48bb78;
+    color: white;
+}
+
+.status-code.error {
+    background-color: #f56565;
+    color: white;
+}
+
+.status-code.warning {
+    background-color: #ed8936;
+    color: white;
+}
+
+/* Code examples */
+.code-example {
+    margin-bottom: 1rem;
+}
+
+.code-example-header {
+    background-color: #e2e8f0;
+    padding: 0.5rem 1rem;
+    border-radius: 6px 6px 0 0;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #2d3748;
+}
+
+.code-example-body {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0 0 6px 6px;
+    border-top: 1px solid #e2e8f0;
+}
+
+/* Mermaid diagrams */
+.mermaid {
+    text-align: center;
+    margin: 2rem 0;
+}
+
+/* Copy button for code blocks */
+.code-block-wrapper {
+    position: relative;
+}
+
+.copy-button {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background-color: #4a5568;
+    color: white;
+    border: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.code-block-wrapper:hover .copy-button {
+    opacity: 1;
+}
+
+.copy-button:hover {
+    background-color: #2d3748;
+}
+
+/* Responsive code blocks */
+@media (max-width: 768px) {
+    .highlight {
+        padding: 0.5rem;
+        font-size: 0.9rem;
+    }
+    
+    .code-example-header {
+        padding: 0.5rem;
+        font-size: 0.8rem;
+    }
+    
+    .code-example-body {
+        padding: 0.5rem;
+    }
+}

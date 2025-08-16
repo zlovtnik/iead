@@ -224,4 +224,74 @@ function tests.test_token_uniqueness()
   end
 end
 
+-- Test secure password generation
+function tests.test_generate_secure_password()
+  local password = security.generate_secure_password()
+  
+  test_runner.assert_not_nil(password, "Password should not be nil")
+  test_runner.assert_type(password, "string", "Password should be a string")
+  test_runner.assert_true(#password == 12, "Default password length should be 12")
+  
+  -- Test custom length
+  local password_custom = security.generate_secure_password(16)
+  test_runner.assert_true(#password_custom == 16, "Custom password length should be respected")
+  
+  -- Test that passwords are unique
+  local password2 = security.generate_secure_password()
+  test_runner.assert_true(password ~= password2, "Generated passwords should be unique")
+end
+
+function tests.test_generate_secure_password_policy_compliance()
+  local password = security.generate_secure_password(20)
+  
+  -- Test that generated password meets policy requirements
+  local valid, err = security.validate_password_strength(password)
+  test_runner.assert_true(valid, "Generated password should meet policy requirements")
+  test_runner.assert_nil(err, "Generated password should have no validation errors")
+  
+  -- Test that password contains required character types
+  test_runner.assert_true(password:match("%l") ~= nil, "Password should contain lowercase letters")
+  test_runner.assert_true(password:match("%u") ~= nil, "Password should contain uppercase letters")
+  test_runner.assert_true(password:match("%d") ~= nil, "Password should contain digits")
+end
+
+function tests.test_generate_secure_password_uniqueness()
+  local passwords = {}
+  local num_passwords = 50
+  
+  -- Generate multiple passwords
+  for i = 1, num_passwords do
+    passwords[i] = security.generate_secure_password(15)
+  end
+  
+  -- Check for uniqueness
+  for i = 1, num_passwords - 1 do
+    for j = i + 1, num_passwords do
+      test_runner.assert_true(passwords[i] ~= passwords[j], "All generated passwords should be unique")
+    end
+  end
+  
+  -- Verify all passwords meet policy
+  for i = 1, num_passwords do
+    local valid, err = security.validate_password_strength(passwords[i])
+    test_runner.assert_true(valid, "All generated passwords should meet policy requirements")
+  end
+end
+
+function tests.test_generate_secure_password_edge_cases()
+  -- Test minimum viable length
+  local short_password = security.generate_secure_password(8)
+  test_runner.assert_true(#short_password == 8, "Should generate password of requested length")
+  
+  local valid, err = security.validate_password_strength(short_password)
+  test_runner.assert_true(valid, "Short password should still meet policy requirements")
+  
+  -- Test longer passwords
+  local long_password = security.generate_secure_password(50)
+  test_runner.assert_true(#long_password == 50, "Should generate long password of requested length")
+  
+  local valid2, err2 = security.validate_password_strength(long_password)
+  test_runner.assert_true(valid2, "Long password should meet policy requirements")
+end
+
 return tests

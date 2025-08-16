@@ -1,0 +1,25 @@
+groups:
+  - name: church_management_rules
+    rules:
+      # Application response time percentiles
+      - record: church_management:http_request_duration_seconds:p95
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, job, instance))
+
+      - record: church_management:http_request_duration_seconds:p99
+        expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, job, instance))
+
+      # Request rate per job/instance
+      - record: church_management:http_requests_per_second
+        expr: sum(rate(http_requests_total[5m])) by (job, instance, method, status)
+
+      # Error rate per job/instance
+      - record: church_management:http_error_rate
+        expr: sum(rate(http_requests_total{status=~"5.."}[5m])) by (job, instance) / sum(rate(http_requests_total[5m])) by (job, instance)
+
+      # Database query performance
+      - record: church_management:db_query_duration_seconds:p95
+        expr: histogram_quantile(0.95, sum(rate(db_query_duration_seconds_bucket[5m])) by (le, query_type, job, instance))
+
+      # Active sessions per instance
+      - record: church_management:active_sessions
+        expr: sum(active_sessions_total) by (instance)

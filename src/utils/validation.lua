@@ -131,6 +131,26 @@ function validation.is_positive_number(value)
   return num ~= nil and num > 0
 end
 
+-- Validate positive integer only (no floats, no scientific notation)
+function validation.is_positive_integer(value)
+  -- Handle string input - must match regex for positive integers only
+  if type(value) == "string" then
+    -- Check if string matches pattern for positive integers (no decimals, no scientific notation)
+    if not value:match("^%d+$") then
+      return false
+    end
+    local num = tonumber(value)
+    return num ~= nil and num > 0
+  end
+  
+  -- Handle number input - must be positive and equal to its floor (integer)
+  if type(value) == "number" then
+    return value > 0 and value == math.floor(value)
+  end
+  
+  return false
+end
+
 -- Validate non-negative number
 function validation.is_non_negative_number(value)
   local num = tonumber(value)

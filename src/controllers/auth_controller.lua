@@ -6,6 +6,7 @@ local Session = require("src.models.session")
 local json_utils = require("src.utils.json")
 local security = require("src.utils.security")
 local auth = require("src.middleware.auth")
+local log = require("src.utils.log")
 
 local AuthController = {}
 
@@ -254,14 +255,20 @@ function AuthController.change_password(client, params)
   
   -- Optionally invalidate all other sessions for security
   if params.invalidate_other_sessions then
-    Session.invalidate_user_sessions(user.id)
+    local invalidated_count, sess_err = Session.invalidate_user_sessions(user.id)
+    if sess_err then
+      log.error("Failed to invalidate sessions for user:", user.id, sess_err)
+      json_utils.send_json_response(client, 500, { error = "Failed to invalidate user sessions" })
+      return
+    end
     -- Re-create current session
     local new_session, session_error = Session.create(user.id)
     if new_session then
       json_utils.send_json_response(client, 200, {
         message = "Password changed successfully. All other sessions have been invalidated.",
         new_token = new_session.token,
-        expires_at = new_session.expires_at
+        expires_at = new_session.expires_at,
+        invalidated_sessions = invalidated_count
       })
       return
     end

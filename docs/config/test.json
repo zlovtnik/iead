@@ -1,0 +1,12 @@
+{
+  "version": "1.0.0-test",
+  "title": "Test Documentation System",
+  "description": "Test configuration for documentation system",
+  "base_url": "http://localhost:3000",
+  "output_dir": "docs/test-output",
+  "plugins": {
+    "test_plugin": {
+      "enabled": true
+    }
+  }
+}
