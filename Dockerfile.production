@@ -1,9 +1,8 @@
 FROM debian:bullseye-slim
 
 # Install dependencies
-RUN apt-get update && apt-get install -y \
-    lua5.4 \
-    liblua5.4-dev \
+RUN apt-get update && apt-get install -y luajit luarocks \
+    libluajit-dev \
     luarocks \
     sqlite3 \
     libsqlite3-dev \
