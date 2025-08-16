@@ -17,13 +17,9 @@ RUN npm run build
 FROM debian:bullseye-slim AS backend-builder
 
 # Install build dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    curl \
-    git \
-    liblua5.4-dev \
+RUN apt-get update && apt-get install -y luajit luarocks \
     libsqlite3-dev \
-    lua5.4 \
+    luajit \
     luarocks \
     sqlite3 \
     && apt-get clean \
@@ -44,11 +40,7 @@ RUN luarocks install busted
 FROM openresty/openresty:1.21.4.1-0-bullseye AS production
 
 # Install runtime dependencies
-RUN apt-get update && apt-get install -y \
-    bash \
-    curl \
-    libsqlite3-dev \
-    lua5.4 \
+RUN apt-get update && apt-get install -y luajit luarocks \
     sqlite3 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
