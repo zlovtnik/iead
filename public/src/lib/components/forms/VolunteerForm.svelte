@@ -51,19 +51,21 @@
   ];
 
   // Generate member options
-  $: memberOptions = $members.members.map(member => ({
-    value: member.id,
-    label: member.name
-  }));
+  const memberOptions = $derived(
+    $members.members.map(member => ({
+      value: member.id,
+      label: member.name
+    }))
+  );
 
   // Generate event options
-  $: eventOptions = [
+  const eventOptions = $derived([
     { value: '', label: 'No specific event' },
     ...$events.events.map(event => ({
       value: event.id,
       label: event.title
     }))
-  ];
+  ]);
 
   async function handleSubmit() {
     try {
@@ -104,7 +106,7 @@
     {isEditing ? 'Edit Volunteer Assignment' : 'Create Volunteer Assignment'}
   </h2>
 
-  <form on:submit|preventDefault={handleSubmit} class="space-y-6">
+  <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="space-y-6">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <!-- Member Selection -->
       <FormField

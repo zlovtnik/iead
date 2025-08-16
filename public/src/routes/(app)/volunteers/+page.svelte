@@ -25,6 +25,9 @@
   let statusFilter = $state('');
   let roleFilter = $state('');
 
+  // Used to avoid running filter effect on first render
+  let isInitialLoad = true;
+
   onMount(() => {
     volunteers.loadVolunteers();
     members.loadMembers();
@@ -40,9 +43,6 @@
     return () => clearTimeout(timeoutId);
   });
 
-<script lang="ts">
-  let isInitialLoad = true;
-
   // Update filters when they change
   $effect(() => {
     if (isInitialLoad) {
@@ -55,7 +55,6 @@
     });
     volunteers.loadVolunteers();
   });
-</script>
 
   // Local action handlers replacing globalThis usage
   function editVolunteer(row: Volunteer) {
@@ -230,16 +229,18 @@
   <div class="bg-white p-6 rounded-lg shadow-sm border">
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
+        <label for="search" class="block text-sm font-medium text-gray-700 mb-2">Search</label>
         <Input
+          id="search"
           type="text"
           placeholder="Search volunteers..."
           bind:value={searchQuery}
         />
       </div>
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+        <label for="status" class="block text-sm font-medium text-gray-700 mb-2">Status</label>
         <select
+          id="status"
           bind:value={statusFilter}
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
@@ -250,8 +251,9 @@
         </select>
       </div>
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Role</label>
+        <label for="role" class="block text-sm font-medium text-gray-700 mb-2">Role</label>
         <Input
+          id="role"
           type="text"
           placeholder="Filter by role..."
           bind:value={roleFilter}

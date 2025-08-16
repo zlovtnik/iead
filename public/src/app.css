@@ -2,44 +2,331 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme variables */
+:root {
+  /* Blessed & Sacred Branding */
+  --primary: #4A5568; /* Peaceful Slate - for main elements like headers and buttons */
+  --secondary: #E6FFFA; /* Heavenly Mint - for highlights and accents */
+  --accent: #81C784; /* Blessed Green - for links, borders, and secondary actions */
+  --background: #F7FAFC; /* Pure Cloud White - for page backgrounds */
+  --text-color: #2D3748; /* Deep Charcoal - for readable text */
+  --holy-gold: #D4AF37; /* Sacred Gold - for special divine elements */
+  --divine-blue: #5A67D8; /* Divine Blue - for spiritual accents */
+  --font-family: 'Inter', 'Georgia', serif; /* Clean, readable font */
+  --shadow-blessed: 0 4px 12px rgba(74, 85, 104, 0.15); /* Gentle blessed shadow */
+  
+  /* Enhanced sacred colors */
+  --primary-light: #718096;
+  --primary-dark: #2D3748;
+  --secondary-light: #F0FFF4;
+  --secondary-dark: #C6F6D5;
+  --accent-light: #A5D6A7;
+  --accent-dark: #66BB6A;
+  --background-light: #FFFFFF;
+  --background-dark: #EDF2F7;
+  
+  /* Divine shadows and gradients */
+  --shadow-soft: 0 2px 8px rgba(74, 85, 104, 0.1);
+  --shadow-medium: 0 4px 16px rgba(74, 85, 104, 0.15);
+  --shadow-strong: 0 8px 24px rgba(74, 85, 104, 0.2);
+  --shadow-divine: 0 0 20px rgba(212, 175, 55, 0.3);
+  --gradient-primary: linear-gradient(135deg, var(--primary), var(--primary-light));
+  --gradient-secondary: linear-gradient(135deg, var(--secondary), var(--secondary-light));
+  --gradient-accent: linear-gradient(135deg, var(--accent), var(--accent-light));
+  --gradient-bg: linear-gradient(to bottom, var(--background), var(--secondary));
+  --gradient-divine: linear-gradient(135deg, var(--divine-blue), #667EEA);
+}
+
 /* Custom base styles */
 @layer base {
 	html {
-		font-family: 'Inter', system-ui, sans-serif;
+		font-family: var(--font-family);
+		scroll-behavior: smooth;
 	}
 
 	body {
-		@apply bg-gray-50 text-gray-900;
+		background: var(--gradient-bg); /* Peaceful gradient for divine atmosphere */
+		color: var(--text-color);
+		font-family: var(--font-family);
+		margin: 0;
+		padding: 0;
+		line-height: 1.6;
+		font-weight: 400;
+	}
+
+	h1, h2, h3, h4, h5, h6 {
+		font-family: var(--font-family);
+		font-weight: 600;
+		color: var(--primary);
+		margin-bottom: 0.5em;
+		line-height: 1.3;
+	}
+
+	h1 { font-size: 2.5rem; }
+	h2 { font-size: 2rem; }
+	h3 { font-size: 1.5rem; }
+	h4 { font-size: 1.25rem; }
+
+	p {
+		font-family: var(--font-family);
+		font-size: 1.1rem;
+		margin-bottom: 1em;
+	}
+
+	a { 
+		color: var(--accent); 
+		text-decoration: none;
+		transition: all 0.3s ease;
+	}
+	
+	a:hover { 
+		color: var(--accent-light);
+		text-decoration: underline;
+	}
+
+	/* Scrollbar styling */
+	::-webkit-scrollbar {
+		width: 8px;
+	}
+
+	::-webkit-scrollbar-track {
+		background: var(--background);
+	}
+
+	::-webkit-scrollbar-thumb {
+		background: var(--primary);
+		border-radius: 4px;
+	}
+
+	::-webkit-scrollbar-thumb:hover {
+		background: var(--primary-light);
 	}
 }
 
-/* Custom component styles */
+/* Enhanced component styles */
 @layer components {
 	.btn {
-		@apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2;
+		@apply inline-flex items-center justify-center px-6 py-3 font-medium rounded-lg transition-all duration-300 focus:outline-none focus:ring-3 focus:ring-offset-2;
+		font-family: var(--font-family);
+		font-size: 1rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		border: none;
+		cursor: pointer;
+		position: relative;
+		overflow: hidden;
+		box-shadow: var(--shadow-blessed);
+	}
+
+	.btn::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: -100%;
+		width: 100%;
+		height: 100%;
+		background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+		transition: left 0.5s;
+	}
+
+	.btn:hover::before {
+		left: 100%;
 	}
 
 	.btn-primary {
-		@apply btn bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500;
+		@apply btn text-white;
+		background: var(--gradient-primary);
+		box-shadow: var(--shadow-soft);
+		border: 2px solid transparent;
+	}
+
+	.btn-primary:hover {
+		transform: translateY(-2px);
+		box-shadow: var(--shadow-medium);
+	}
+
+	.btn-primary:focus {
+		@apply ring-purple-500;
+		box-shadow: var(--shadow-medium);
 	}
 
 	.btn-secondary {
-		@apply btn bg-secondary-600 text-white hover:bg-secondary-700 focus:ring-secondary-500;
+		@apply btn;
+		background: var(--gradient-secondary);
+		color: var(--primary);
+		box-shadow: var(--shadow-soft);
+		border: 2px solid var(--secondary);
+	}
+
+	.btn-secondary:hover {
+		transform: translateY(-2px);
+		box-shadow: var(--shadow-medium);
+		background: var(--secondary-light);
+	}
+
+	.btn-accent {
+		@apply btn text-white;
+		background: var(--gradient-accent);
+		box-shadow: var(--shadow-soft);
+		border: 2px solid transparent;
+	}
+
+	.btn-accent:hover {
+		transform: translateY(-2px);
+		box-shadow: var(--shadow-medium);
 	}
 
 	.btn-outline {
-		@apply btn border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-primary-500;
+		@apply btn;
+		background: transparent;
+		color: var(--primary);
+		border: 2px solid var(--primary);
+	}
+
+	.btn-outline:hover {
+		background: var(--primary);
+		color: white;
+		transform: translateY(-2px);
+	}
+
+	.fancy-card {
+		background: linear-gradient(135deg, var(--background-light) 0%, var(--secondary-light) 100%);
+		border: 2px solid var(--accent);
+		padding: 2rem;
+		margin: 1rem 0;
+		border-radius: 16px;
+		box-shadow: var(--shadow-blessed);
+		transition: all 0.3s ease;
+		position: relative;
+		overflow: hidden;
+	}
+
+	.fancy-card::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 4px;
+		background: var(--gradient-secondary);
+	}
+
+	.fancy-card:hover {
+		transform: translateY(-4px);
+		border-color: var(--holy-gold);
+		box-shadow: var(--shadow-divine);
+	}
+
+	.fancy-card h4 {
+		color: var(--primary);
+		font-family: var(--font-family);
+		font-size: 1.4rem;
+		margin-bottom: 1rem;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.fancy-card h4::before {
+		content: '✝';
+		color: var(--holy-gold);
+		font-size: 0.8em;
+	}
+
+	.fancy-card p {
+		color: var(--text-color);
+		font-family: var(--font-family);
+		line-height: 1.7;
+		margin: 0;
 	}
 
 	.card {
-		@apply bg-white rounded-lg shadow-sm border border-gray-200;
+		@apply fancy-card;
 	}
 
 	.form-input {
-		@apply block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500;
+		@apply block w-full rounded-lg border-2 border-gray-300 shadow-sm focus:border-secondary focus:ring-secondary;
+		font-family: var(--font-family);
+		font-size: 1rem;
+		padding: 0.75rem 1rem;
+		transition: all 0.3s ease;
+		background: var(--background-light);
+		color: var(--text-color);
+		border-color: var(--accent);
+	}
+
+	.form-input:focus {
+		box-shadow: 0 0 0 3px rgba(129, 199, 132, 0.3);
+		border-color: var(--accent);
+		background: var(--background-light);
 	}
 
 	.form-label {
-		@apply block text-sm font-medium text-gray-700 mb-1;
+		@apply block font-medium mb-2;
+		font-family: var(--font-family);
+		font-size: 1rem;
+		color: var(--primary);
+		font-weight: 600;
+	}
+
+	/* Table enhancements */
+	.fancy-table {
+		background: var(--background-light);
+		border-radius: 12px;
+		overflow: hidden;
+		box-shadow: var(--shadow-blessed);
+		border: 1px solid var(--accent);
+	}
+
+	.fancy-table th {
+		background: var(--gradient-primary);
+		color: var(--background-light);
+		font-family: var(--font-family);
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		padding: 1rem;
+		border: none;
+	}
+
+	.fancy-table td {
+		padding: 1rem;
+		border-bottom: 1px solid var(--background-dark);
+		font-family: var(--font-family);
+		color: var(--text-color);
+	}
+
+	.fancy-table tbody tr:hover {
+		background: var(--secondary-light);
+	}
+
+	/* Status badges */
+	.status-badge {
+		display: inline-block;
+		padding: 0.25rem 0.75rem;
+		border-radius: 20px;
+		font-size: 0.875rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		font-family: var(--font-family);
+		box-shadow: var(--shadow-soft);
+	}
+
+	.status-active {
+		background: var(--gradient-secondary);
+		color: var(--primary);
+	}
+
+	.status-inactive {
+		background: var(--background-dark);
+		color: var(--text-color);
+		border: 1px solid var(--primary-light);
+	}
+
+	.status-completed {
+		background: var(--gradient-accent);
+		color: var(--background-light);
 	}
 }
