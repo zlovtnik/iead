@@ -1,4 +1,4 @@
-#!/usr/bin/env lua
+#!/usr/bin/env luajit
 
 -- Performance testing script for Church Management System
 -- Tests critical API endpoints for response time and throughput

@@ -1,4 +1,4 @@
-#!/usr/bin/env lua
+#!/usr/bin/env luajit
 -- Isolated test for rate limiting functionality without database dependencies
 
 -- Copy the exact rate limiting logic from auth.lua

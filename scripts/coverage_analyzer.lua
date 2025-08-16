@@ -1,4 +1,4 @@
-#!/usr/bin/env lua
+#!/usr/bin/env luajitjit
 -- scripts/coverage_analyzer.lua
 -- Advanced coverage analysis and reporting
 

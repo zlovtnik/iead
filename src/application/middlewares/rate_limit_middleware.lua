@@ -3,6 +3,7 @@
 
 local json_utils = require("src.utils.json")
 local log = require("src.utils.log")
+local fun = require("src.utils.functional")
 
 local rate_limiter = {}
 
@@ -66,11 +67,18 @@ local function cleanup_expired_entries()
     
     last_cleanup = current_time
     
+    -- Use functional approach to filter out expired entries
+    local expired_keys = {}
     for key, attempts in pairs(rate_limit_store) do
         if attempts.window_start and 
            current_time - attempts.window_start > RATE_LIMIT_CONFIG.auth_endpoints.window_seconds then
-            rate_limit_store[key] = nil
+            table.insert(expired_keys, key)
         end
+    end
+    
+    -- Remove expired entries
+    for _, key in ipairs(expired_keys) do
+        rate_limit_store[key] = nil
     end
 end
 
@@ -161,36 +169,44 @@ end
 -- @param next function Next middleware function
 function rate_limiter.auth_rate_limit_middleware(client, params, next)
     local config = RATE_LIMIT_CONFIG.auth_endpoints
-    local identifiers = {}
+    local identifiers = {"ip:" .. get_client_ip(client)}
     
-    -- Collect identifiers for rate limiting
-    table.insert(identifiers, "ip:" .. get_client_ip(client))
-    
+    -- Add username identifier if available
     if params and params.username then
         table.insert(identifiers, "username:" .. params.username)
     end
     
-    -- Check rate limits for all identifiers
-    for _, identifier in ipairs(identifiers) do
+    -- Check rate limits for all identifiers using functional approach
+    local rate_limit_results = fun.map_table(function(identifier)
         local allowed, remaining = rate_limiter.check_rate_limit(identifier, config)
+        return {
+            identifier = identifier,
+            allowed = allowed,
+            remaining = remaining
+        }
+    end, identifiers)
+    
+    -- Check if any rate limit is exceeded
+    local blocked_identifier = fun.find(function(result)
+        return not result.allowed
+    end, rate_limit_results)
+    
+    if blocked_identifier then
+        log.warn("Rate limit exceeded", {
+            identifier = blocked_identifier.identifier,
+            ip = get_client_ip(client),
+            endpoint = "auth"
+        })
         
-        if not allowed then
-            log.warn("Rate limit exceeded", {
-                identifier = identifier,
-                ip = get_client_ip(client),
-                endpoint = "auth"
-            })
-            
-            json_utils.send_json_response(client, 429, {
-                error = "Rate Limit Exceeded",
-                code = "RATE_LIMIT_EXCEEDED",
-                message = "Too many authentication attempts. Please try again in " .. 
-                         math.ceil(config.window_seconds / 60) .. " minutes",
-                retry_after = config.window_seconds,
-                timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
-            })
-            return
-        end
+        json_utils.send_json_response(client, 429, {
+            error = "Rate Limit Exceeded",
+            code = "RATE_LIMIT_EXCEEDED",
+            message = "Too many authentication attempts. Please try again in " .. 
+                     math.ceil(config.window_seconds / 60) .. " minutes",
+            retry_after = config.window_seconds,
+            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+        })
+        return
     end
     
     -- Continue to next middleware

@@ -15,6 +15,8 @@ local UserController = require("src.controllers.user_controller")
 local auth = require("src.middleware.auth")
 local json_utils = require("src.utils.json")
 local views = require("src.views.home")
+local fun = require("src.utils.functional")
+local pipeline = require("src.utils.pipeline")
 
 -- Router module
 local router = {
@@ -23,16 +25,69 @@ local router = {
   pattern_routes = {}
 }
 
--- HTTP Methods
-local HTTP_METHODS = {
-  GET = true,
-  POST = true,
-  PUT = true,
-  DELETE = true,
-  PATCH = true,
-  OPTIONS = true,
-  HEAD = true
-}
+-- Middleware composer using functional programming
+-- @param middlewares table Array of middleware functions
+-- @param final_handler function Final handler function
+-- @return function Composed middleware chain
+function router.compose_middleware(middlewares, final_handler)
+  if not middlewares or #middlewares == 0 then
+    return final_handler
+  end
+  
+  return fun.reduce_table(function(composed, middleware)
+    return function(client, params, ...)
+      return middleware(client, params, function()
+        return composed(client, params, ...)
+      end, ...)
+    end
+  end, final_handler, middlewares)
+end
+
+-- Enhanced route registration with middleware support
+-- @param path string Route path
+-- @param handlers table Method handlers with optional middleware
+-- @param middlewares table Optional array of middleware functions for all methods
+-- @return boolean Success status
+-- @return string Error message if any
+function router.register_with_middleware(path, handlers, middlewares)
+  if not path or type(handlers) ~= "table" then
+    return false, "Invalid route configuration"
+  end
+  
+  local enhanced_handlers = {}
+  
+  for method, handler in pairs(handlers) do
+    if type(handler) == "function" then
+      -- Apply middleware composition
+      enhanced_handlers[method] = router.compose_middleware(middlewares or {}, handler)
+    elseif type(handler) == "table" and handler.handler and type(handler.handler) == "function" then
+      -- Handler with specific middleware
+      local handler_middlewares = handler.middleware or {}
+      local combined_middlewares = {}
+      
+      -- Combine global and handler-specific middleware
+      for _, mw in ipairs(middlewares or {}) do
+        table.insert(combined_middlewares, mw)
+      end
+      for _, mw in ipairs(handler_middlewares) do
+        table.insert(combined_middlewares, mw)
+      end
+      
+      enhanced_handlers[method] = router.compose_middleware(combined_middlewares, handler.handler)
+    else
+      enhanced_handlers[method] = handler
+    end
+  end
+  
+  return router.register(path, enhanced_handlers)
+end
+
+-- HTTP Methods (using functional approach)
+local HTTP_METHODS = {}
+local methods = {"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"}
+for _, method in ipairs(methods) do
+  HTTP_METHODS[method] = true
+end
 
 -- Route registration function
 function router.register(path, handlers)
@@ -103,10 +158,10 @@ function router.match(path, method, client, params)
       end
       return true
     else
-      -- Method not allowed
+      -- Method not allowed - use functional approach to get allowed methods
       local allowed = {}
-      for m, _ in pairs(exact_match) do
-        table.insert(allowed, m)
+      for method, _ in pairs(exact_match) do
+        table.insert(allowed, method)
       end
       response.method_not_allowed(client, allowed)
       return true
@@ -127,10 +182,10 @@ function router.match(path, method, client, params)
         end
         return true
       else
-        -- Method not allowed
+        -- Method not allowed - use functional approach
         local allowed = {}
-        for m, _ in pairs(handlers) do
-          table.insert(allowed, m)
+        for method, _ in pairs(handlers) do
+          table.insert(allowed, method)
         end
         response.method_not_allowed(client, allowed)
         return true

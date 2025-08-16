@@ -1,4 +1,4 @@
-#!/usr/bin/env lua
+#!/usr/bin/env luajit
 
 -- Health Check System for Church Management
 -- Comprehensive system health monitoring and reporting

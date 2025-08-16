@@ -2,18 +2,18 @@
 -- Member repository implementation using BaseRepository
 
 local BaseRepository = require("src.infrastructure.db.base_repository")
+local fun = require("src.utils.functional")
+local DataProcessor = require("src.infrastructure.utils.data_processor")
 
--- Allowed fields for member filtering conditions
-local ALLOWED_MEMBER_FILTER_FIELDS = {
-  ["first_name"] = true,
-  ["last_name"] = true,
-  ["email"] = true,
-  ["phone"] = true,
-  ["address"] = true,
-  ["date_of_birth"] = true,
-  ["membership_date"] = true,
-  ["is_active"] = true
+-- Allowed fields for member filtering conditions (using functional approach)
+local ALLOWED_MEMBER_FILTER_FIELDS = {}
+local allowed_fields = {
+  "first_name", "last_name", "email", "phone", "address", 
+  "date_of_birth", "membership_date", "is_active"
 }
+for _, field in ipairs(allowed_fields) do
+  ALLOWED_MEMBER_FILTER_FIELDS[field] = true
+end
 
 local MemberRepository = {}
 MemberRepository.__index = MemberRepository
@@ -348,6 +348,177 @@ end
 function MemberRepository:get_full_name(member)
   if not member then return nil end
   return (member.first_name or "") .. " " .. (member.last_name or "")
+end
+
+-- Advanced member operations using functional programming
+function MemberRepository:get_enhanced_members(options)
+  options = options or {}
+  
+  -- Get base members
+  local members, err = self:find_all(options)
+  if not members then
+    return nil, err
+  end
+  
+  -- Define transformations using functional approach
+  local transformations = {}
+  
+  -- Add computed fields
+  table.insert(transformations, function(member)
+    return DataProcessor.add_computed_fields({member}, {
+      full_name = function(m) return self:get_full_name(m) end,
+      age = function(m) 
+        if m.date_of_birth then
+          local birth_year = m.date_of_birth:match("(%d%d%d%d)")
+          if birth_year then
+            return tonumber(os.date("%Y")) - tonumber(birth_year)
+          end
+        end
+        return nil
+      end,
+      membership_years = function(m)
+        if m.membership_date then
+          local membership_year = m.membership_date:match("(%d%d%d%d)")
+          if membership_year then
+            return tonumber(os.date("%Y")) - tonumber(membership_year)
+          end
+        end
+        return nil
+      end
+    })[1]
+  end)
+  
+  -- Apply transformations
+  return DataProcessor.process_results(members, transformations), nil
+end
+
+-- Get member analytics using functional programming
+function MemberRepository:get_member_analytics()
+  local members, err = self:find_all()
+  if not members then
+    return nil, err
+  end
+  
+  -- Group members by various criteria
+  local analytics = {}
+  
+  -- Group by membership year
+  analytics.by_membership_year = DataProcessor.group_results(members, function(member)
+    if member.membership_date then
+      return member.membership_date:match("(%d%d%d%d)") or "unknown"
+    end
+    return "unknown"
+  end)
+  
+  -- Group by age ranges
+  analytics.by_age_range = DataProcessor.group_results(members, function(member)
+    if member.date_of_birth then
+      local birth_year = member.date_of_birth:match("(%d%d%d%d)")
+      if birth_year then
+        local age = tonumber(os.date("%Y")) - tonumber(birth_year)
+        if age < 18 then return "under_18"
+        elseif age < 30 then return "18_29"
+        elseif age < 50 then return "30_49"
+        elseif age < 65 then return "50_64"
+        else return "65_plus"
+        end
+      end
+    end
+    return "unknown"
+  end)
+  
+  -- Get active/inactive counts
+  local active_members, inactive_members = fun.partition_table(function(member)
+    return member.is_active == 1
+  end, members)
+  
+  analytics.status_breakdown = {
+    active = #active_members,
+    inactive = #inactive_members,
+    total = #members
+  }
+  
+  -- Get members with complete information
+  analytics.data_completeness = {
+    with_phone = fun.count_where(function(m) return m.phone and m.phone ~= "" end, members),
+    with_address = fun.count_where(function(m) return m.address and m.address ~= "" end, members),
+    with_birth_date = fun.count_where(function(m) return m.date_of_birth and m.date_of_birth ~= "" end, members),
+    total = #members
+  }
+  
+  return analytics, nil
+end
+
+-- Filter members by advanced criteria using functional programming
+function MemberRepository:filter_members_advanced(filter_options)
+  local members, err = self:find_all()
+  if not members then
+    return nil, err
+  end
+  
+  local filters = {}
+  
+  -- Add age filter
+  if filter_options.min_age or filter_options.max_age then
+    table.insert(filters, function(member)
+      if not member.date_of_birth then return false end
+      local birth_year = member.date_of_birth:match("(%d%d%d%d)")
+      if not birth_year then return false end
+      
+      local age = tonumber(os.date("%Y")) - tonumber(birth_year)
+      
+      if filter_options.min_age and age < filter_options.min_age then
+        return false
+      end
+      if filter_options.max_age and age > filter_options.max_age then
+        return false
+      end
+      
+      return true
+    end)
+  end
+  
+  -- Add membership duration filter
+  if filter_options.min_membership_years then
+    table.insert(filters, function(member)
+      if not member.membership_date then return false end
+      local membership_year = member.membership_date:match("(%d%d%d%d)")
+      if not membership_year then return false end
+      
+      local years = tonumber(os.date("%Y")) - tonumber(membership_year)
+      return years >= filter_options.min_membership_years
+    end)
+  end
+  
+  -- Add birthday this month filter
+  if filter_options.birthday_this_month then
+    table.insert(filters, function(member)
+      if not member.date_of_birth then return false end
+      local birth_month = member.date_of_birth:match("%d%d%d%d-(%d%d)")
+      if not birth_month then return false end
+      
+      return tonumber(birth_month) == tonumber(os.date("%m"))
+    end)
+  end
+  
+  -- Apply all filters
+  local filtered_members = DataProcessor.apply_filters(members, filters)
+  
+  -- Apply sorting if specified
+  if filter_options.sort_by then
+    local sort_criteria = {{
+      field = filter_options.sort_by,
+      direction = filter_options.sort_direction or "asc"
+    }}
+    filtered_members = DataProcessor.sort_results(filtered_members, sort_criteria)
+  end
+  
+  -- Apply pagination if specified
+  if filter_options.page and filter_options.per_page then
+    return DataProcessor.paginate_results(filtered_members, filter_options.page, filter_options.per_page)
+  end
+  
+  return filtered_members, nil
 end
 
 return MemberRepository

@@ -1,4 +1,4 @@
-#!/usr/bin/env lua
+#!/usr/bin/env luajit
 
 -- Log Aggregation and Analysis System
 -- Comprehensive logging solution for Church Management System

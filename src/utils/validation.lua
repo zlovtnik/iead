@@ -1,6 +1,8 @@
 -- src/utils/validation.lua
 -- Validation utilities for Church Management System
 
+local fun = require("src.utils.functional")
+
 local validation = {}
 
 -- Normalize boolean values from various formats (string, number, boolean)
@@ -163,13 +165,8 @@ function validation.is_valid_attendance_status(status)
     return false
   end
   
-  local valid_statuses = {
-    present = true,
-    absent = true,
-    excused = true
-  }
-  
-  return valid_statuses[status:lower()] ~= nil
+  local valid_statuses = {"present", "absent", "excused"}
+  return fun.any_match(function(s) return s == status:lower() end, valid_statuses)
 end
 
 -- Validate payment method
@@ -178,15 +175,8 @@ function validation.is_valid_payment_method(method)
     return true -- Payment method is optional
   end
   
-  local valid_methods = {
-    cash = true,
-    check = true,
-    card = true,
-    online = true,
-    bank_transfer = true
-  }
-  
-  return valid_methods[method:lower()] ~= nil
+  local valid_methods = {"cash", "check", "card", "online", "bank_transfer"}
+  return fun.any_match(function(m) return m == method:lower() end, valid_methods)
 end
 
 -- Sanitize string for SQL
@@ -257,33 +247,135 @@ function validation.validate_attendance_data(data)
   end
   
   if not data.status or not validation.is_valid_attendance_status(data.status) then
-    table.insert(errors, "Valid status (present, absent, excused) is required")
+-- Validate member data using functional approach
+function validation.validate_member_data(data)
+  if not data then
+    return false, {"Member data is required"}
   end
   
-  return #errors == 0, errors
+  local validation_rules = {
+    {field = "first_name", required = true, validator = validation.is_non_empty_string, message = "First name is required"},
+    {field = "last_name", required = true, validator = validation.is_non_empty_string, message = "Last name is required"},
+    {field = "email", required = true, validator = validation.is_valid_email, message = "Valid email is required"},
+    {field = "phone", required = false, validator = validation.is_valid_phone, message = "Invalid phone format"},
+    {field = "date_of_birth", required = false, validator = function(v) return not v or v == "" or validation.is_valid_date(v) end, message = "Invalid date format"},
+    {field = "membership_date", required = false, validator = function(v) return not v or v == "" or validation.is_valid_date(v) end, message = "Invalid date format"}
+  }
+  
+  local errors = fun.filter_table(function(rule)
+    local value = data[rule.field]
+    return not rule.validator(value)
+  end, validation_rules)
+  
+  local error_messages = fun.pluck("message", errors)
+  
+  return #error_messages == 0, error_messages
 end
 
--- Validate donation data
+-- Validate event data using functional approach  
+function validation.validate_event_data(data)
+  if not data then
+    return false, {"Event data is required"}
+  end
+  
+  local validation_rules = {
+    {field = "title", validator = validation.is_non_empty_string, message = "Event title is required"},
+    {field = "start_date", validator = validation.is_valid_datetime, message = "Valid start date is required"},
+    {field = "location", validator = function(v) return not v or validation.is_non_empty_string(v) end, message = "Location must be non-empty if provided"}
+  }
+  
+  local errors = fun.filter_table(function(rule)
+    return not rule.validator(data[rule.field])
+  end, validation_rules)
+  
+  return #errors == 0, fun.pluck("message", errors)
+end
+
+-- Validate attendance data using functional approach
+function validation.validate_attendance_data(data)
+  if not data then
+    return false, {"Attendance data is required"}
+  end
+  
+  local validation_rules = {
+    {field = "member_id", validator = validation.is_positive_number, message = "Valid member ID is required"},
+    {field = "event_id", validator = validation.is_positive_number, message = "Valid event ID is required"},
+    {field = "status", validator = validation.is_valid_attendance_status, message = "Valid status (present, absent, excused) is required"}
+  }
+  
+  local errors = fun.filter_table(function(rule)
+    return not rule.validator(data[rule.field])
+  end, validation_rules)
+  
+  return #errors == 0, fun.pluck("message", errors)
+end
+
+-- Validate donation data using functional approach
 function validation.validate_donation_data(data)
-  local errors = {}
-  
-  if not data.amount or not validation.is_positive_number(data.amount) then
-    table.insert(errors, "Valid positive amount is required")
+  if not data then
+    return false, {"Donation data is required"}
   end
   
-  if not data.donation_date or not validation.is_valid_date(data.donation_date) then
-    table.insert(errors, "Valid donation date is required")
+  local validation_rules = {
+    {field = "amount", validator = validation.is_positive_number, message = "Valid positive amount is required"},
+    {field = "donation_date", validator = validation.is_valid_date, message = "Valid donation date is required"},
+    {field = "member_id", validator = function(v) return not v or validation.is_positive_number(v) end, message = "Member ID must be a positive number"},
+    {field = "payment_method", validator = function(v) return not v or validation.is_valid_payment_method(v) end, message = "Invalid payment method"}
+  }
+  
+  local errors = fun.filter_table(function(rule)
+    return not rule.validator(data[rule.field])
+  end, validation_rules)
+  
+  return #errors == 0, fun.pluck("message", errors)
+end
+
+-- Batch validate multiple records using functional approach
+-- @param records table Array of records to validate
+-- @param validator_func function Validation function to apply
+-- @return table Valid records
+-- @return table Invalid records with errors
+function validation.batch_validate(records, validator_func)
+  if not records or #records == 0 then
+    return {}, {}
   end
   
-  if data.member_id and not validation.is_positive_number(data.member_id) then
-    table.insert(errors, "Member ID must be a positive number")
+  local validation_results = fun.map_table(function(record)
+    local is_valid, errors = validator_func(record)
+    return {
+      record = record,
+      is_valid = is_valid,
+      errors = errors or {}
+    }
+  end, records)
+  
+  local valid_records, invalid_records = fun.partition_table(function(result)
+    return result.is_valid
+  end, validation_results)
+  
+  return fun.pluck("record", valid_records), invalid_records
+end
+
+-- Sanitize a table of data using functional approach
+-- @param data table Data to sanitize
+-- @param sanitize_rules table Rules for sanitization
+-- @return table Sanitized data
+function validation.sanitize_data(data, sanitize_rules)
+  if not data or not sanitize_rules then
+    return data
   end
   
-  if data.payment_method and not validation.is_valid_payment_method(data.payment_method) then
-    table.insert(errors, "Invalid payment method")
-  end
+  local sanitized = {}
+  fun.from_pairs(data):each(function(key, value)
+    local sanitizer = sanitize_rules[key]
+    if sanitizer and type(sanitizer) == "function" then
+      sanitized[key] = sanitizer(value)
+    else
+      sanitized[key] = value
+    end
+  end)
   
-  return #errors == 0, errors
+  return sanitized
 end
 
 return validation

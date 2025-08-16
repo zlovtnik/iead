@@ -1,4 +1,4 @@
-#!/usr/bin/env lua
+#!/usr/bin/env luajitjit
 -- scripts/parse_test_results.lua
 -- Parse test results and generate CI-friendly output
 

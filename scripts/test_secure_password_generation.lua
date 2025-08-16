@@ -1,4 +1,4 @@
-#!/usr/bin/env lua
+#!/usr/bin/env luajit
 
 -- Test script to verify secure password generation improvements
 -- This script tests the cryptographically secure random number generation

@@ -5,6 +5,7 @@ local UserRepository = require("src.infrastructure.repositories.user_repository"
 local json_utils = require("src.utils.json")
 local auth = require("src.middleware.auth")
 local log = require("src.utils.log")
+local fun = require("src.utils.functional")
 
 local UserController = {}
 
@@ -89,15 +90,14 @@ local function sanitize_for_logging(data)
     ["secret"] = true
   }
   
+  -- Use functional approach to filter out sensitive fields
   local sanitized = {}
   for key, value in pairs(data) do
     local lower_key = string.lower(key)
-    if sensitive_fields[lower_key] or string.match(lower_key, "^auth_") then
-      -- Omit sensitive fields entirely from logs
-      -- Could alternatively use: sanitized[key] = "[REDACTED]"
-    else
+    if not (sensitive_fields[lower_key] or string.match(lower_key, "^auth_")) then
       sanitized[key] = value
     end
+    -- Omit sensitive fields entirely from logs
   end
   
   return sanitized

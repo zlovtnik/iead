@@ -1,4 +1,4 @@
-#!/usr/bin/env lua
+#!/usr/bin/env luajit
 
 -- Final verification script for GitHub Issue #13 resolution
 -- Demonstrates that the security vulnerability has been fixed

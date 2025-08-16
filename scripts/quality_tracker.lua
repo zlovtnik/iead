@@ -1,4 +1,4 @@
-#!/usr/bin/env lua
+#!/usr/bin/env luajitjit
 
 -- Quality Metrics Tracker
 -- Part of Phase 4: Testing & Quality implementation

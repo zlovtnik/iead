@@ -1,4 +1,4 @@
-#!/usr/bin/env lua
+#!/usr/bin/env luajit
 
 -- Main Documentation Generation Script
 -- Provides command-line interface for generating documentation

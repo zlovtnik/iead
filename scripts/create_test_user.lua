@@ -1,4 +1,4 @@
-#!/usr/bin/env lua
+#!/usr/bin/env luajit
 -- Script to create a test user in the main database
 
 local User = require('src.models.user_secure')

@@ -1,4 +1,4 @@
-#!/usr/bin/env lua
+#!/usr/bin/env luajit
 
 -- scripts/generate_api_docs.lua
 -- Script to generate API documentation

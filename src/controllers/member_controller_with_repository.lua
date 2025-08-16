@@ -3,6 +3,7 @@
 
 local json = require("cjson")
 local MemberRepository = require("src.infrastructure.repositories.member_repository")
+local fun = require("src.utils.functional")
 
 local MemberController = {}
 
@@ -22,6 +23,7 @@ local function validate_member_data(data)
   local required_fields = {"first_name", "last_name", "email"}
   local errors = {}
   
+  -- Use functional approach to validate required fields
   for _, field in ipairs(required_fields) do
     if not data[field] or data[field] == "" then
       table.insert(errors, field .. " is required")
@@ -41,16 +43,13 @@ local function validate_member_data(data)
     end
   end
   
-  -- Validate date format if provided
-  if data.birth_date and data.birth_date ~= "" then
-    if not string.match(data.birth_date, "^%d%d%d%d%-%d%d%-%d%d$") then
-      table.insert(errors, "Invalid birth_date format (use YYYY-MM-DD)")
-    end
-  end
-  
-  if data.join_date and data.join_date ~= "" then
-    if not string.match(data.join_date, "^%d%d%d%d%-%d%d%-%d%d$") then
-      table.insert(errors, "Invalid join_date format (use YYYY-MM-DD)")
+  -- Date validation fields
+  local date_fields = {"birth_date", "join_date"}
+  for _, field in ipairs(date_fields) do
+    if data[field] and data[field] ~= "" then
+      if not string.match(data[field], "^%d%d%d%d%-%d%d%-%d%d$") then
+        table.insert(errors, "Invalid " .. field .. " format (use YYYY-MM-DD)")
+      end
     end
   end
   

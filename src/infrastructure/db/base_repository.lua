@@ -4,6 +4,7 @@
 local db = require("src.infrastructure.db.connection")
 local validation = require("src.utils.validation")
 local log = require("src.utils.log")
+local fun = require("src.utils.functional")
 
 local BaseRepository = {}
 BaseRepository.__index = BaseRepository
@@ -55,14 +56,8 @@ function BaseRepository:validate_order_clause(order_by, order_direction)
     end
   end
   
-  -- Validate column name against allowlist
-  local is_allowed = false
-  for _, col in ipairs(allowed) do
-    if col == order_by then
-      is_allowed = true
-      break
-    end
-  end
+  -- Validate column name against allowlist using functional approach
+  local is_allowed = fun.any_match(function(col) return col == order_by end, allowed)
   
   if not is_allowed then
     return nil, nil  -- Invalid column
@@ -161,7 +156,8 @@ function BaseRepository:build_where_clause(conditions)
   local where_parts = {}
   local params = {}
   
-  for field, value in pairs(conditions) do
+  -- Use functional approach to build WHERE clause
+  fun.from_pairs(conditions):each(function(field, value)
     if type(value) == "table" and value.operator then
       -- Handle complex conditions like {operator = "LIKE", value = "%search%"}
       if value.operator == "=" and value.value == nil then
@@ -172,11 +168,10 @@ function BaseRepository:build_where_clause(conditions)
       end
     elseif type(value) == "table" and value["in"] then
       -- Handle IN conditions like {in = {1, 2, 3}}
-      local placeholders = {}
-      for _, v in ipairs(value["in"]) do
-        table.insert(placeholders, "?")
+      local placeholders = fun.map_table(function(_) return "?" end, value["in"])
+      fun.from_table(value["in"]):each(function(v)
         table.insert(params, v)
-      end
+      end)
       table.insert(where_parts, field .. " IN (" .. table.concat(placeholders, ",") .. ")")
     else
       -- Simple equality condition
@@ -187,7 +182,7 @@ function BaseRepository:build_where_clause(conditions)
         table.insert(params, value)
       end
     end
-  end
+  end)
   
   return "WHERE " .. table.concat(where_parts, " AND "), params
 end

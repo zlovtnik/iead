@@ -1,4 +1,4 @@
-#!/usr/bin/env lua
+#!/usr/bin/env luajit
 
 -- Coverage Calculator for Backend Tests
 -- Generates coverage reports based on test results
