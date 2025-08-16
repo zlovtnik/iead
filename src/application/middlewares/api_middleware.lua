@@ -6,6 +6,8 @@ local ErrorHandler = require("src.application.middlewares.error_handler")
 local RequestValidator = require("src.application.middlewares.request_validator")
 local ApiVersioning = require("src.application.middlewares.api_versioning")
 local auth = require("src.application.middlewares.auth_middleware")
+local SchemaExtractor = require("src.application.middlewares.schema_extractor")
+local ControllerAnnotations = require("src.application.middlewares.controller_annotations")
 
 local ApiMiddleware = {}
 
@@ -165,7 +167,7 @@ end
 ApiMiddleware.presets = {
   -- Public API endpoint (no authentication)
   public = function(options)
-    return ApiMiddleware.create_standard_stack(deep_extend("force", {
+    return ApiMiddleware.create_documented_stack(deep_extend("force", {
       authentication = false,
       csrf_protection = false,
       rate_limiting = true
@@ -174,7 +176,7 @@ ApiMiddleware.presets = {
   
   -- Authenticated API endpoint
   authenticated = function(options)
-    return ApiMiddleware.create_standard_stack(deep_extend("force", {
+    return ApiMiddleware.create_documented_stack(deep_extend("force", {
       authentication = "member",
       csrf_protection = true,
       rate_limiting = true
@@ -183,7 +185,7 @@ ApiMiddleware.presets = {
   
   -- Admin-only API endpoint
   admin_only = function(options)
-    return ApiMiddleware.create_standard_stack(deep_extend("force", {
+    return ApiMiddleware.create_documented_stack(deep_extend("force", {
       authentication = "admin",
       csrf_protection = true,
       rate_limiting = false  -- Admins typically don't need rate limiting
@@ -192,7 +194,7 @@ ApiMiddleware.presets = {
   
   -- Pastor/Admin API endpoint
   pastor_only = function(options)
-    return ApiMiddleware.create_standard_stack(deep_extend("force", {
+    return ApiMiddleware.create_documented_stack(deep_extend("force", {
       authentication = "pastor",
       csrf_protection = true,
       rate_limiting = false
@@ -201,7 +203,7 @@ ApiMiddleware.presets = {
   
   -- CRUD operations with validation
   crud = function(validation_schema, options)
-    return ApiMiddleware.create_standard_stack(deep_extend("force", {
+    return ApiMiddleware.create_documented_stack(deep_extend("force", {
       authentication = "member",
       validation_schema = validation_schema,
       csrf_protection = true,
@@ -211,7 +213,7 @@ ApiMiddleware.presets = {
   
   -- Read-only operations
   read_only = function(options)
-    return ApiMiddleware.create_standard_stack(deep_extend("force", {
+    return ApiMiddleware.create_documented_stack(deep_extend("force", {
       authentication = "member",
       csrf_protection = false,  -- No CSRF for read operations
       rate_limiting = true
@@ -264,6 +266,9 @@ function ApiMiddleware.with_error_handling(handler)
   end
 end
 
+-- Global registry for API documentation metadata
+ApiMiddleware._documentation_registry = {}
+
 -- Helper to create API documentation middleware
 -- @param docs table API documentation
 -- @return function Documentation middleware
@@ -275,6 +280,81 @@ function ApiMiddleware.documentation(docs)
     if next then
       next()
     end
+  end
+end
+
+-- Register endpoint documentation metadata
+-- @param endpoint_id string Unique identifier for the endpoint
+-- @param metadata table Documentation metadata
+function ApiMiddleware.register_endpoint_docs(endpoint_id, metadata)
+  if not endpoint_id or not metadata then
+    return
+  end
+  
+  ApiMiddleware._documentation_registry[endpoint_id] = {
+    id = endpoint_id,
+    summary = metadata.summary,
+    description = metadata.description,
+    tags = metadata.tags or {},
+    parameters = metadata.parameters or {},
+    request_body = metadata.request_body,
+    responses = metadata.responses or {},
+    examples = metadata.examples or {},
+    auth_required = metadata.auth_required,
+    deprecated = metadata.deprecated or false,
+    version = metadata.version or "v1",
+    registered_at = os.time()
+  }
+end
+
+-- Get all registered endpoint documentation
+-- @return table All registered documentation metadata
+function ApiMiddleware.get_all_endpoint_docs()
+  return ApiMiddleware._documentation_registry
+end
+
+-- Get documentation for specific endpoint
+-- @param endpoint_id string The endpoint identifier
+-- @return table|nil Documentation metadata or nil if not found
+function ApiMiddleware.get_endpoint_docs(endpoint_id)
+  return ApiMiddleware._documentation_registry[endpoint_id]
+end
+
+-- Enhanced middleware creation with documentation capture
+-- @param options table Configuration options including documentation
+-- @return function Complete API middleware function with documentation
+function ApiMiddleware.create_documented_stack(options)
+  options = options or {}
+  
+  -- Register documentation if provided
+  if options.endpoint and options.documentation then
+    ApiMiddleware.register_endpoint_docs(options.endpoint, options.documentation)
+  end
+  
+  -- Create standard middleware stack
+  local middleware = ApiMiddleware.create_standard_stack(options)
+  
+  -- Wrap with documentation capture
+  return function(client, params)
+    params = params or {}
+    
+    -- Add endpoint documentation to params
+    if options.endpoint then
+      params.endpoint_id = options.endpoint
+      params.endpoint_docs = ApiMiddleware.get_endpoint_docs(options.endpoint)
+    end
+    
+    -- Add route information for documentation extraction
+    params.route_info = {
+      path = client.path,
+      method = client.method,
+      endpoint_id = options.endpoint,
+      validation_schema = options.validation_schema,
+      authentication = options.authentication,
+      rate_limiting = options.rate_limiting
+    }
+    
+    middleware(client, params)
   end
 end
 
@@ -329,5 +409,76 @@ ApiMiddleware.ApiResponse = ApiResponse
 ApiMiddleware.ErrorHandler = ErrorHandler
 ApiMiddleware.RequestValidator = RequestValidator
 ApiMiddleware.ApiVersioning = ApiVersioning
+ApiMiddleware.SchemaExtractor = SchemaExtractor
+ApiMiddleware.ControllerAnnotations = ControllerAnnotations
+
+-- Helper to extract documentation from validation schema
+-- @param validation_schema table The validation schema
+-- @param endpoint_info table Additional endpoint information
+-- @return table Documentation metadata
+function ApiMiddleware.extract_docs_from_schema(validation_schema, endpoint_info)
+  endpoint_info = endpoint_info or {}
+  
+  local docs = {
+    request_body = nil,
+    responses = {
+      ["200"] = {
+        description = "Successful response",
+        content = {
+          ["application/json"] = {
+            schema = {
+              type = "object",
+              properties = {
+                success = { type = "boolean" },
+                data = { type = "object" },
+                message = { type = "string" },
+                meta = {
+                  type = "object",
+                  properties = {
+                    timestamp = { type = "string", format = "date-time" },
+                    request_id = { type = "string" },
+                    version = { type = "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      ["400"] = {
+        description = "Validation error"
+      },
+      ["401"] = {
+        description = "Authentication required"
+      },
+      ["403"] = {
+        description = "Access denied"
+      },
+      ["500"] = {
+        description = "Internal server error"
+      }
+    }
+  }
+  
+  -- Extract request body schema from validation
+  if validation_schema then
+    local request_schema = SchemaExtractor.extract_schema(validation_schema)
+    docs.request_body = {
+      required = true,
+      content = {
+        ["application/json"] = {
+          schema = request_schema
+        }
+      }
+    }
+  end
+  
+  -- Add authentication requirements
+  if endpoint_info.auth_required then
+    docs.security = { { bearerAuth = {} } }
+  end
+  
+  return docs
+end
 
 return ApiMiddleware

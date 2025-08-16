@@ -1,0 +1,282 @@
+openapi: 3.0.3
+paths:
+
+tags:
+
+info:
+  version: 1.0.0
+  description: Comprehensive API for church operations management including member management, events, donations, and reporting
+  title: Church Management System API
+  contact:
+    name: API Support
+    email: [email]@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+components:
+  schemas:
+    MemberCreate:
+      type: object
+      required:
+        - name
+      properties:
+        email:
+          maxLength: 254
+          type: string
+          format: email
+          description: Maximum length: 254 characters. Format: email
+        date_of_birth:
+          type: string
+          format: date
+          description: Format: date
+        name:
+          minLength: 1
+          type: string
+          maxLength: 100
+          description: Required field. Length: 1-100 characters
+        phone:
+          maxLength: 20
+          type: string
+          format: phone
+          description: Maximum length: 20 characters. Format: phone
+    EventCreate:
+      type: object
+      required:
+        - start_date
+        - name
+      properties:
+        start_date:
+          type: string
+          format: date-time
+          description: Required field. Format: date-time
+        name:
+          minLength: 1
+          type: string
+          maxLength: 100
+          description: Required field. Length: 1-100 characters
+        end_date:
+          type: string
+          format: date-time
+          description: Format: date-time
+        description:
+          type: string
+          maxLength: 1000
+          description: Maximum length: 1000 characters
+    DonationCreate:
+      type: object
+      required:
+        - amount
+        - member_id
+      properties:
+        category:
+          type: string
+          maxLength: 50
+          description: Maximum length: 50 characters
+        amount:
+          minimum: 0
+          type: number
+          description: Required field. Format: number
+        donation_date:
+          type: string
+          format: date
+          description: Format: date
+        member_id:
+          minimum: 1
+          type: integer
+          description: Required field. Format: integer
+    PaginatedResponse:
+      allOf:
+        - $ref: #/components/schemas/SuccessResponse
+        - properties:
+            pagination:
+              properties:
+                per_page:
+                  type: integer
+                current_page:
+                  type: integer
+                total_items:
+                  type: integer
+                has_previous:
+                  type: boolean
+                total_pages:
+                  type: integer
+                has_next:
+                  type: boolean
+              type: object
+          type: object
+    SuccessResponse:
+      properties:
+        success:
+          example: true
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+        meta:
+          properties:
+            version:
+              type: string
+            timestamp:
+              format: date-time
+              type: string
+            request_id:
+              type: string
+          type: object
+      type: object
+    UserLogin:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          maxLength: 50
+          description: Required field. Maximum length: 50 characters
+        password:
+          type: string
+          maxLength: 128
+          description: Required field. Maximum length: 128 characters
+    UserCreate:
+      type: object
+      required:
+        - role
+        - password
+        - username
+        - email
+      properties:
+        role:
+          enum:
+            - Admin
+            - Pastor
+            - Member
+          type: string
+          description: Required field
+        password:
+          minLength: 8
+          type: string
+          maxLength: 128
+          description: Required field. Length: 8-128 characters
+        email:
+          minLength: 5
+          type: string
+          maxLength: 254
+          format: email
+          description: Required field. Length: 5-254 characters. Format: email
+        username:
+          minLength: 3
+          type: string
+          maxLength: 50
+          description: Required field. Length: 3-50 characters
+        member_id:
+          minimum: 1
+          type: integer
+          description: Format: integer
+  responses:
+    NotFound:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: NOT_FOUND
+                  message:
+                    type: string
+                    example: Resource not found
+      description: Resource not found
+    Forbidden:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: FORBIDDEN
+                  message:
+                    type: string
+                    example: Access denied
+      description: Access denied
+    ValidationError:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: object
+                properties:
+                  details:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  message:
+                    type: string
+                    example: The request data is invalid
+                  code:
+                    type: string
+                    example: VALIDATION_FAILED
+              meta:
+                type: object
+                properties:
+                  timestamp:
+                    format: date-time
+                    type: string
+                  version:
+                    type: string
+                  request_id:
+                    type: string
+      description: Validation error response
+    Unauthorized:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: UNAUTHORIZED
+                  message:
+                    type: string
+                    example: Authentication required
+      description: Authentication required
+  securitySchemes:
+    bearerAuth:
+      scheme: bearer
+      type: http
+      bearerFormat: JWT
+      description: JWT token obtained from login endpoint
+    sessionAuth:
+      in: cookie
+      type: apiKey
+      name: session_token
+      description: Session-based authentication
+servers:
+  - description: Development server
+    url: http://localhost:8080
+  - description: Production server
+    url: https://api.church.example.com
