@@ -162,7 +162,7 @@ function ApiResponse.send(client, status_code, response_data)
   
   if not response_data.success and response_data.error then
     log_data.error_code = response_data.error.code
-    log.warn("API error response", log_data)
+    log.info("API error response", log_data)
   else
     log.info("API response", log_data)
   end

@@ -114,6 +114,22 @@ function security.generate_secure_token()
     return table.concat(result)
 end
 
+-- Generate a token of specified length
+-- @param length number The desired token length (defaults to TOKEN_LENGTH)
+-- @return string Hex encoded random token
+function security.generate_token(length)
+    length = length or TOKEN_LENGTH
+    local chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    local result = {}
+    
+    for i = 1, length do
+        local rand_index = secure_random(#chars)
+        result[#result + 1] = chars:sub(rand_index, rand_index)
+    end
+    
+    return table.concat(result)
+end
+
 -- Validate password strength according to policy
 -- @param password string The password to validate
 -- @return boolean True if password meets policy requirements

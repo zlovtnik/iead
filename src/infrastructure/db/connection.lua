@@ -143,9 +143,9 @@ function db.execute_prepared(query, params)
 
     -- Check if result is a cursor (SELECT query) or just affected rows count
     if type(result) == "userdata" then
-        -- Store connection reference in cursor for cleanup
-        result._connection = conn
-        return result, nil
+        -- For SELECT queries, return cursor and connection separately
+        -- We'll handle connection cleanup in the calling functions
+        return result, nil, conn
     else
         -- For non-SELECT queries, release connection immediately
         db.release_connection(conn)
@@ -158,7 +158,7 @@ end
 -- @param params table Array of parameters to bind
 -- @return rows, error
 function db.query_all(query, params)
-    local cursor, err = db.execute_prepared(query, params)
+    local cursor, err, conn = db.execute_prepared(query, params)
     if not cursor then
         return nil, err
     end
@@ -176,8 +176,8 @@ function db.query_all(query, params)
     end
 
     cursor:close()
-    if cursor._connection then
-        db.release_connection(cursor._connection)
+    if conn then
+        db.release_connection(conn)
     end
 
     return rows, nil
@@ -188,7 +188,7 @@ end
 -- @param params table Array of parameters to bind
 -- @return row, error
 function db.query_one(query, params)
-    local cursor, err = db.execute_prepared(query, params)
+    local cursor, err, conn = db.execute_prepared(query, params)
     if not cursor then
         return nil, err
     end
@@ -198,10 +198,18 @@ function db.query_one(query, params)
         return nil, nil
     end
 
+    -- Debug: Check if cursor has the fetch method
+    if not cursor.fetch then
+        if conn then
+            db.release_connection(conn)
+        end
+        return nil, "Cursor does not have fetch method. Type: " .. type(cursor) .. ", Metatable: " .. tostring(getmetatable(cursor))
+    end
+
     local row = cursor:fetch({}, "a")
     cursor:close()
-    if cursor._connection then
-        db.release_connection(cursor._connection)
+    if conn then
+        db.release_connection(conn)
     end
 
     return row, nil

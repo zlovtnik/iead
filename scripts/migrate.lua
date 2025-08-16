@@ -5,8 +5,7 @@
 
 local sqlite3 = require("luasql.sqlite3")
 local json = require("cjson")
- RUN luarocks install luasocket
- RUN luarocks install luafilesystem
+local lfs = require("lfs")
 
 local DatabaseMigrator = {}
 DatabaseMigrator.__index = DatabaseMigrator

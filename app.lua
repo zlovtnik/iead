@@ -31,6 +31,10 @@ print("Database path: " .. db_path)
 -- Initialize database schema
 schema.init()
 
+-- Register API routes
+local api_routes = require("src.routes.api_routes")
+api_routes.register()
+
 -- Main server function
 local function start_server(host, port)
   local server = assert(socket.bind(host, port))
@@ -38,18 +42,42 @@ local function start_server(host, port)
   
   -- Main loop
   while true do
-    local client = server:accept()
-    client:settimeout(60)
+    local client_socket = server:accept()
+    client_socket:settimeout(60)
     
-    local request = http_utils.parse_request(client)
+    local request = http_utils.parse_request(client_socket)
     local path, query_params = http_utils.parse_query_params(request.path)
     local form_params = http_utils.parse_form_data(request.body)
     
-    -- Combine params
+    -- Create client wrapper with headers for middleware access
+    local client = {
+      socket = client_socket,
+      headers = request.headers,
+      method = request.method,
+      ip = client_socket:getpeername(),
+      -- Proxy socket methods
+      send = function(self, data) return self.socket:send(data) end,
+      receive = function(self, pattern) return self.socket:receive(pattern) end,
+      close = function(self) return self.socket:close() end,
+      settimeout = function(self, timeout) return self.socket:settimeout(timeout) end
+    }
+    
+    -- Parse JSON data if Content-Type is application/json
+    local json_params = {}
+    if request.headers and request.headers["content-type"] and
+       string.find(string.lower(request.headers["content-type"]), "application/json") then
+      local success, json_data = pcall(require("cjson").decode, request.body or "")
+      if success and type(json_data) == "table" then
+        json_params = json_data
+      end
+    end
+
+    -- Combine params (JSON takes precedence over form data)
     local params = {}
     for k, v in pairs(query_params) do params[k] = v end
     for k, v in pairs(form_params) do params[k] = v end
-    
+    for k, v in pairs(json_params) do params[k] = v end
+
     -- Route the request
     local handled = router.match(path, request.method, client, params)
     

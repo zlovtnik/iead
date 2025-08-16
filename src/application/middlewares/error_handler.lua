@@ -272,7 +272,7 @@ function ErrorHandler.middleware()
         request_id = params.request_id,
         user_id = params.current_user and params.current_user.id,
         endpoint = params.endpoint,
-        method = client.method
+        method = params.method or "unknown"
       }
       
       -- Merge additional context

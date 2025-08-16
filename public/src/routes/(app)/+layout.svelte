@@ -18,9 +18,15 @@
   onMount(() => {
     auth.init();
     
+    // Debug: log auth state
+    console.log('Initial auth state in app layout:', auth.get());
+    
     // Subscribe to auth changes and redirect if not authenticated
     const unsubscribe = isAuthenticated.subscribe((authenticated) => {
-      if (!authenticated) {
+      console.log('Auth state changed:', authenticated, 'Current path:', $page.url.pathname);
+      
+      if (!authenticated && $page.url.pathname !== '/login') {
+        console.log('Not authenticated, redirecting to login');
         goto(`/login?redirect=${encodeURIComponent($page.url.pathname)}`);
       }
     });
@@ -29,7 +35,7 @@
   });
 
   // Navigation items based on user role
-  let navigationItems = $derived($user ? getNavigationItems($user.role) : []);
+  let navigationItems = $derived($user ? getNavigationItems($user.role) : getNavigationItems('Member'));
 
   function getNavigationItems(role: 'Admin' | 'Pastor' | 'Member') {
     const baseItems = [
@@ -145,7 +151,7 @@
                     ? 'border-b-2 border-primary-500 text-secondary-900'
                     : 'text-secondary-500 hover:text-secondary-700 hover:border-secondary-300'
                 }"
-                on:click={closeMobileMenu}
+                onclick={closeMobileMenu}
               >
                 {item.name}
               </a>
@@ -161,18 +167,18 @@
               <button
                 type="button"
                 class="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-                on:click={toggleUserMenu}
+                onclick={toggleUserMenu}
                 aria-expanded={isUserMenuOpen}
                 aria-haspopup="true"
               >
                 <span class="sr-only">Open user menu</span>
                 <div class="h-8 w-8 rounded-full bg-primary-600 flex items-center justify-center">
                   <span class="text-sm font-medium text-white">
-                    {$user.username.charAt(0).toUpperCase()}
+                    {$user?.username?.charAt(0)?.toUpperCase() || '?'}
                   </span>
                 </div>
                 <span class="ml-2 text-sm font-medium text-secondary-700 hidden sm:block">
-                  {$user.username}
+                  {$user?.username || 'User'}
                 </span>
                 <svg class="ml-1 h-4 w-4 text-secondary-400" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -185,8 +191,8 @@
                   <div class="py-1" role="menu" aria-orientation="vertical">
                     <!-- User info -->
                     <div class="px-4 py-2 text-sm text-secondary-500 border-b border-secondary-100">
-                      <div class="font-medium text-secondary-900">{$user.username}</div>
-                      <div class="text-xs">{$user.role}</div>
+                      <div class="font-medium text-secondary-900">{$user?.username || 'User'}</div>
+                      <div class="text-xs">{$user?.role || 'Member'}</div>
                     </div>
 
                     <!-- Menu items -->
@@ -194,17 +200,17 @@
                       href="/profile"
                       class="block px-4 py-2 text-sm text-secondary-700 hover:bg-secondary-100"
                       role="menuitem"
-                      on:click={closeUserMenu}
+                      onclick={closeUserMenu}
                     >
                       Profile Settings
                     </a>
                     
-                    {#if $user.role === 'Admin'}
+                    {#if $user?.role === 'Admin'}
                       <a
                         href="/settings"
                         class="block px-4 py-2 text-sm text-secondary-700 hover:bg-secondary-100"
                         role="menuitem"
-                        on:click={closeUserMenu}
+                        onclick={closeUserMenu}
                       >
                         System Settings
                       </a>
@@ -214,7 +220,7 @@
                       type="button"
                       class="block w-full text-left px-4 py-2 text-sm text-error-700 hover:bg-error-50"
                       role="menuitem"
-                      on:click={showLogoutConfirmation}
+                      onclick={showLogoutConfirmation}
                     >
                       Sign out
                     </button>
@@ -228,7 +234,7 @@
           <button
             type="button"
             class="md:hidden ml-2 inline-flex items-center justify-center p-2 rounded-md text-secondary-400 hover:text-secondary-500 hover:bg-secondary-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500 mobile-menu-button"
-            on:click={toggleMobileMenu}
+            onclick={toggleMobileMenu}
             aria-expanded={isMobileMenuOpen}
           >
             <span class="sr-only">Open main menu</span>
@@ -260,7 +266,7 @@
                   ? 'bg-primary-50 border-r-4 border-primary-500 text-primary-700'
                   : 'text-secondary-600 hover:text-secondary-800 hover:bg-secondary-50'
               }"
-              on:click={closeMobileMenu}
+              onclick={closeMobileMenu}
             >
               {item.name}
             </a>
@@ -288,13 +294,13 @@
     <div class="flex justify-end space-x-3">
       <Button
         variant="ghost"
-        on:click={() => showLogoutModal = false}
+        onclick={() => showLogoutModal = false}
       >
         Cancel
       </Button>
       <Button
         variant="error"
-        on:click={handleLogout}
+        onclick={handleLogout}
       >
         Sign Out
       </Button>

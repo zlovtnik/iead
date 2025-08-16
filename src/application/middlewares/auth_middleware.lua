@@ -54,16 +54,23 @@ end
 -- @return string|nil The extracted token or nil if not found
 function auth.extract_token(client)
   if not client or not client.headers then
+    log.info("No client or headers found")
     return nil
   end
   
   local auth_header = client.headers["Authorization"] or client.headers["authorization"]
   if not auth_header then
+    log.info("No Authorization header found")
     return nil
   end
   
+  log.info("Auth header found", {header = auth_header})
+  
   -- Extract Bearer token
   local token = auth_header:match("^Bearer%s+(.+)$")
+  
+  log.info("Token extraction result", {token = token or "nil"})
+  
   return token
 end
 
@@ -75,17 +82,32 @@ function auth.validate_session(token)
     return nil, nil, "Missing authentication token"
   end
   
-  -- Validate session
-  local session, session_error = Session.validate(token)
+  -- Find and validate session
+  local session, session_error = Session.find_by_token(token)
   if not session then
     return nil, nil, session_error or "Invalid session"
   end
   
-  -- Get user information
-  local user, user_error = User.get_by_id(session.user_id)
-  if not user then
-    return nil, nil, user_error or "User not found"
-  end
+    -- The find_by_token already includes user info, so extract it
+  local validation = require("src.utils.validation")
+  
+  local user = {
+    id = session.user_id,
+    username = session.username,
+    email = session.email,
+    role = session.role,
+    member_id = session.member_id,
+    is_active = validation.normalize_boolean(session.is_active)
+  }
+  
+  -- Debug logging
+  log.info("Session validation debug", {
+    user_id = session.user_id,
+    username = session.username,
+    is_active_raw = session.is_active,
+    is_active_type = type(session.is_active),
+    is_active_computed = user.is_active
+  })
   
   -- Check if user is active
   if not user.is_active then

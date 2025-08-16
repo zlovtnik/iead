@@ -1,0 +1,48 @@
+-- Backend Lua Fix: Add this function to your backend server
+-- This should be added to a utility file that gets loaded globally
+-- or directly in the request_validator.lua file before it's used
+
+-- Global utility function for get_table_keys
+function get_table_keys(tbl)
+    if type(tbl) ~= "table" then
+        return {}
+    end
+
+    local keys = {}
+    for key, _ in pairs(tbl) do
+        table.insert(keys, key)
+    end
+    return keys
+end
+
+-- Additional helper functions that might be useful
+function get_table_values(tbl)
+    if type(tbl) ~= "table" then
+        return {}
+    end
+
+    local values = {}
+    for _, value in pairs(tbl) do
+        table.insert(values, value)
+    end
+    return values
+end
+
+function is_table_empty(tbl)
+    if type(tbl) ~= "table" then
+        return true
+    end
+    return next(tbl) == nil
+end
+
+function table_size(tbl)
+    if type(tbl) ~= "table" then
+        return 0
+    end
+
+    local count = 0
+    for _ in pairs(tbl) do
+        count = count + 1
+    end
+    return count
+end

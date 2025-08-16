@@ -28,6 +28,7 @@ export class AuthApi {
    * Authenticate user with credentials
    */
   static async login(credentials: LoginCredentials): Promise<LoginResponse> {
+		console.log('Logging in...');
     return apiClient.post<LoginResponse>('/auth/login', credentials);
   }
 
@@ -35,6 +36,7 @@ export class AuthApi {
    * Logout current user
    */
   static async logout(): Promise<void> {
+
     return apiClient.post<void>('/auth/logout');
   }
 
@@ -63,9 +65,9 @@ export class AuthApi {
    * Reset password with token
    */
   static async resetPassword(token: string, newPassword: string): Promise<void> {
-    return apiClient.post<void>('/auth/password-reset/confirm', { 
-      token, 
-      newPassword 
+    return apiClient.post<void>('/auth/password-reset/confirm', {
+      token,
+      newPassword
     });
   }
 
@@ -73,7 +75,7 @@ export class AuthApi {
    * Change current user's password
    */
   static async changePassword(currentPassword: string, newPassword: string): Promise<void> {
-    return apiClient.post<void>('/auth/change-password', {
+    return apiClient.post<void>('/auth/password', {
       currentPassword,
       newPassword
     });

@@ -32,6 +32,13 @@ export const auth = {
   subscribe: authStore.subscribe,
 
   /**
+   * Get the current auth state
+   */
+  get(): AuthState {
+    return get(authStore);
+  },
+
+  /**
    * Initialize the auth store by checking for existing tokens
    * Should be called on app startup
    */
@@ -45,16 +52,24 @@ export const auth = {
       return;
     }
 
+    console.log('Auth init starting...');
     authStore.update(state => ({ ...state, isLoading: true }));
 
     try {
       const token = TokenStorage.getToken();
       const refreshToken = TokenStorage.getRefreshToken();
+      const storedUser = TokenStorage.getUser();
+      
+      console.log('Auth init: token exists?', !!token);
+      console.log('Auth init: refresh token exists?', !!refreshToken);
+      console.log('Auth init: stored user exists?', !!storedUser);
 
       if (token && refreshToken) {
         try {
           // Try to get current user to validate token
+          console.log('Auth init: validating token with API call...');
           const currentUser = await AuthApi.me();
+          console.log('Auth init: user authenticated', currentUser);
           
           authStore.update(state => ({
             ...state,
@@ -69,6 +84,7 @@ export const auth = {
           TokenStorage.setUser(currentUser);
         } catch (error) {
           // Token might be invalid, try to refresh
+          console.log('Auth init: token invalid, trying refresh');
           try {
             await this.refreshToken();
           } catch (refreshError) {
@@ -77,8 +93,13 @@ export const auth = {
             this.clearAuth();
           }
         }
+      } else if (storedUser) {
+        // We have user data but no tokens, consider as logged out
+        console.log('Auth init: user data exists but no tokens');
+        this.clearAuth();
       } else {
-        // No tokens found
+        // No tokens or user data found
+        console.log('Auth init: no authentication data found');
         authStore.update(state => ({
           ...state,
           isLoading: false,
@@ -108,18 +129,37 @@ export const auth = {
       TokenStorage.setTokens(response.tokens);
       TokenStorage.setUser(response.user);
       
+      console.log('Login successful, user:', response.user);
+      
+      // Update auth state after tokens are saved
       authStore.update(state => ({
         ...state,
         user: response.user,
         isAuthenticated: true,
         isLoading: false,
-        error: null
+        error: null,
+        isInitialized: true
       }));
     } catch (error) {
-      const errorMessage = error instanceof ApiException 
-        ? error.message 
-        : 'Login failed. Please try again.';
-      
+      let errorMessage = 'Login failed. Please try again.';
+
+      if (error instanceof ApiException) {
+        // Handle specific backend errors
+        if (error.message.includes('get_table_keys')) {
+          errorMessage = 'Server is temporarily unavailable due to a configuration issue. Please contact support or try again later.';
+        } else if (error.message.includes('attempt to call a nil value')) {
+          errorMessage = 'Server configuration error. Please contact support.';
+        } else if (error.message.includes('validation failed')) {
+          errorMessage = 'Please check your username and password requirements.';
+        } else if (error.message.includes('Invalid credentials') || error.message.includes('unauthorized')) {
+          errorMessage = 'Invalid username or password.';
+        } else if (error.statusCode === 422) {
+          errorMessage = 'Server error processing your request. Please try again or contact support.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
       authStore.update(state => ({
         ...state,
         isLoading: false,
@@ -199,11 +239,7 @@ export const auth = {
   clearAuth(): void {
     TokenStorage.clearAll();
     authStore.update(state => ({
-      ...state,
-      user: null,
-      isAuthenticated: false,
-      isLoading: false,
-      error: null,
+      ...initialState,
       isInitialized: true
     }));
   },

@@ -16,7 +16,7 @@ function User.init_db()
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
         email TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,=
+        password_hash TEXT NOT NULL,
         role TEXT NOT NULL CHECK (role IN ('Admin', 'Pastor', 'Member')),
         member_id INTEGER,
         is_active BOOLEAN DEFAULT 1,

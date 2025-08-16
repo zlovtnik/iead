@@ -15,15 +15,15 @@
 
   // Redirect if already authenticated
   onMount(() => {
-    const unsubscribe = isAuthenticated.subscribe((authenticated) => {
+    return isAuthenticated.subscribe((authenticated) => {
       if (authenticated) {
-        const user = auth.subscribe(state => state.user);
-        const redirectTo = $page.url.searchParams.get('redirect') || getPostLoginRedirect(user);
-        goto(redirectTo, { replaceState: true });
+        const user = auth.get().user;
+        if (user) {
+          const redirectTo = $page.url.searchParams.get('redirect') || getPostLoginRedirect(user);
+          goto(redirectTo, { replaceState: true });
+        }
       }
     });
-
-    return unsubscribe;
   });
 
   async function handleLogin(data: LoginCredentials) {
@@ -32,7 +32,10 @@
       
       // Get redirect URL from query params or use default
       const redirectTo = $page.url.searchParams.get('redirect') || '/dashboard';
-      await goto(redirectTo, { replaceState: true });
+      console.log('Login successful, redirecting to:', redirectTo);
+      setTimeout(() => {
+        goto(redirectTo, { replaceState: true });
+      }, 100); // Small delay to ensure auth state is updated
     } catch (error) {
       // Error is handled by the auth store and displayed in the form
       console.error('Login failed:', error);
@@ -66,7 +69,7 @@
         submitVariant="primary"
         class="space-y-6"
       >
-        {#snippet children(form)}
+        {#snippet children(form: any)}
           <div class="space-y-4">
             <FormField
               name="username"
@@ -77,7 +80,12 @@
               bind:value={form.formData.username}
               error={form.errors.username}
               onchange={(value) => form.handleFieldChange('username', value)}
-              onblur={(event) => form.handleFieldBlur('username', event.target.value)}
+              onblur={(event) => {
+                const target = event.target as HTMLInputElement | null;
+                if (target) {
+                  form.handleFieldBlur('username', target.value);
+                }
+              }}
               autocomplete="username"
               placeholder="Enter your username"
             />
@@ -91,10 +99,28 @@
               bind:value={form.formData.password}
               error={form.errors.password}
               onchange={(value) => form.handleFieldChange('password', value)}
-              onblur={(event) => form.handleFieldBlur('password', event.target.value)}
+              onblur={(event) => {
+                const target = event.target as HTMLInputElement | null;
+                if (target) {
+                  form.handleFieldBlur('password', target.value);
+                }
+              }}
               autocomplete="current-password"
               placeholder="Enter your password"
             />
+
+            <!-- Password requirements hint -->
+            {#if form.errors.password}
+              <div class="text-xs text-secondary-600 mt-1">
+                <p class="font-medium">Password must contain:</p>
+                <ul class="list-disc list-inside mt-1 space-y-1">
+                  <li>At least 8 characters</li>
+                  <li>One uppercase letter</li>
+                  <li>One lowercase letter</li>
+                  <li>One number</li>
+                </ul>
+              </div>
+            {/if}
           </div>
 
           <!-- Additional options -->

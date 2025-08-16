@@ -75,6 +75,15 @@ local response = {
 function router.match(path, method, client, params)
   params = params or {}
   
+  -- Handle CORS preflight OPTIONS requests
+  if method == "OPTIONS" then
+    local json_utils = require("src.utils.json")
+    json_utils.send_response(client, 200, {
+      ["Content-Type"] = "text/plain"
+    }, "")
+    return true
+  end
+
   -- Validate method
   if not HTTP_METHODS[method] then
     response.method_not_allowed(client, {})
@@ -153,22 +162,67 @@ router.register("/", {
 
 -- Authentication routes
 router.register("/auth/login", {
+  OPTIONS = function(client, params)
+    -- Handle CORS preflight
+    json_utils.send_response(client, 200, {
+      ["Access-Control-Allow-Origin"] = "http://localhost:5173",
+      ["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS",
+      ["Access-Control-Allow-Headers"] = "Content-Type, Authorization",
+      ["Access-Control-Allow-Credentials"] = "true"
+    }, "")
+  end,
   POST = AuthController.login
 })
 
 router.register("/auth/logout", {
+  OPTIONS = function(client, params)
+    -- Handle CORS preflight
+    json_utils.send_response(client, 200, {
+      ["Access-Control-Allow-Origin"] = "http://localhost:5173",
+      ["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS",
+      ["Access-Control-Allow-Headers"] = "Content-Type, Authorization",
+      ["Access-Control-Allow-Credentials"] = "true"
+    }, "")
+  end,
   POST = AuthController.logout
 })
 
 router.register("/auth/refresh", {
+  OPTIONS = function(client, params)
+    -- Handle CORS preflight
+    json_utils.send_response(client, 200, {
+      ["Access-Control-Allow-Origin"] = "http://localhost:5173",
+      ["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS",
+      ["Access-Control-Allow-Headers"] = "Content-Type, Authorization",
+      ["Access-Control-Allow-Credentials"] = "true"
+    }, "")
+  end,
   POST = AuthController.refresh_token
 })
 
 router.register("/auth/me", {
+  OPTIONS = function(client, params)
+    -- Handle CORS preflight
+    json_utils.send_response(client, 200, {
+      ["Access-Control-Allow-Origin"] = "http://localhost:5173",
+      ["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS",
+      ["Access-Control-Allow-Headers"] = "Content-Type, Authorization",
+      ["Access-Control-Allow-Credentials"] = "true"
+    }, "")
+  end,
   GET = AuthController.get_current_user
 })
 
 router.register("/auth/password", {
+  OPTIONS = function(client, params)
+    -- Handle CORS preflight
+    json_utils.send_response(client, 200, {
+      ["Access-Control-Allow-Origin"] = "http://localhost:5173",
+      ["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS",
+      ["Access-Control-Allow-Headers"] = "Content-Type, Authorization",
+      ["Access-Control-Allow-Credentials"] = "true"
+    }, "")
+  end,
   PUT = AuthController.change_password
 })
 

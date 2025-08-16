@@ -123,31 +123,12 @@ local function get_versioned_handler(handlers, version)
 end
 
 -- Add version-specific response headers
--- @param client table The client connection
+-- @param params table The params object where headers will be stored  
 -- @param version string The API version being used
-local function add_version_headers(client, version)
-  local version_info = VERSION_INFO[version]
-  if not version_info then return end
-  
-  -- Standard version header
-  client.response_headers = client.response_headers or {}
-  client.response_headers["X-API-Version"] = version
-  
-  -- Deprecation warning
-  if version_info.deprecated then
-    client.response_headers["Warning"] = string.format(
-      '299 - "API version %s is deprecated%s"',
-      version,
-      version_info.sunset_date and (" and will be removed on " .. version_info.sunset_date) or ""
-    )
-    
-    if version_info.sunset_date then
-      client.response_headers["Sunset"] = version_info.sunset_date
-    end
-  end
-  
-  -- API status
-  client.response_headers["X-API-Status"] = version_info.status
+local function add_version_headers(params, version)
+  -- Headers are now handled by ApiResponse.send()
+  -- Version information is passed through params.api_version and meta.version
+  -- TODO: Implement deprecation warnings through response meta if needed
 end
 
 -- Create version handling middleware
@@ -208,7 +189,7 @@ function ApiVersioning.middleware()
     params.api_version = version
     
     -- Add version headers
-    add_version_headers(client, version)
+    add_version_headers(params, version)
     
     -- Log version usage
     log.info("API version determined", {

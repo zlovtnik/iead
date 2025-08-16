@@ -6,6 +6,7 @@ import axios, {
 } from 'axios';
 import { ApiException, type ApiError, type ApiResponse, type AuthTokens, type RefreshTokenRequest } from './types.js';
 import { TokenStorage } from '../utils/token-storage.js';
+import { env } from '$env/dynamic/public';
 
 export interface ApiClient {
   get<T>(url: string, config?: AxiosRequestConfig): Promise<T>;
@@ -23,7 +24,7 @@ class HttpClient implements ApiClient {
     reject: (error: any) => void;
   }> = [];
 
-  constructor(baseURL: string = '/api') {
+  constructor(baseURL: string = typeof env !== 'undefined' && env.PUBLIC_API_BASE_URL ? env.PUBLIC_API_BASE_URL : 'http://localhost:8080/api/v1') {
     this.axiosInstance = axios.create({
       baseURL,
       timeout: 10000,
@@ -137,11 +138,15 @@ class HttpClient implements ApiClient {
     if (axios.isAxiosError(error)) {
       if (error.response) {
         // Server responded with error status
+        // Handle your backend's error format: { error: { message: "...", code: "..." } }
+        const errorData = error.response.data;
+        const errorMessage = errorData?.error?.message || errorData?.message || error.message;
+
         const apiError: ApiError = {
           type: this.getErrorType(error.response.status),
-          message: error.response.data?.message || error.message,
+          message: errorMessage,
           statusCode: error.response.status,
-          details: error.response.data?.details,
+          details: errorData?.error?.details || errorData?.details,
         };
         return new ApiException(apiError);
       } else if (error.request) {
@@ -176,28 +181,38 @@ class HttpClient implements ApiClient {
   }
 
   async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.axiosInstance.get<ApiResponse<T>>(url, config);
-    return response.data.data;
+    try {
+      const response = await this.axiosInstance.get(url, config);
+      // Handle your backend's response format - data might be at root level or under 'data' key
+      return response.data.data || response.data;
+    } catch (error) {
+      console.error(`Error fetching ${url}:`, error);
+      throw error;
+    }
   }
 
   async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.axiosInstance.post<ApiResponse<T>>(url, data, config);
-    return response.data.data;
+    const response = await this.axiosInstance.post(url, data, config);
+    // Handle your backend's response format - data might be at root level or under 'data' key
+    return response.data.data || response.data;
   }
 
   async put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.axiosInstance.put<ApiResponse<T>>(url, data, config);
-    return response.data.data;
+    const response = await this.axiosInstance.put(url, data, config);
+    // Handle your backend's response format - data might be at root level or under 'data' key
+    return response.data.data || response.data;
   }
 
   async patch<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.axiosInstance.patch<ApiResponse<T>>(url, data, config);
-    return response.data.data;
+    const response = await this.axiosInstance.patch(url, data, config);
+    // Handle your backend's response format - data might be at root level or under 'data' key
+    return response.data.data || response.data;
   }
 
   async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.axiosInstance.delete<ApiResponse<T>>(url, config);
-    return response.data.data;
+    const response = await this.axiosInstance.delete(url, config);
+    // Handle your backend's response format - data might be at root level or under 'data' key
+    return response.data.data || response.data;
   }
 }
 

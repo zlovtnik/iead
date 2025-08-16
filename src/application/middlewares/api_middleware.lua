@@ -335,7 +335,7 @@ function ApiMiddleware.create_documented_stack(options)
   local middleware = ApiMiddleware.create_standard_stack(options)
   
   -- Wrap with documentation capture
-  return function(client, params)
+  return function(client, params, final_handler)
     params = params or {}
     
     -- Add endpoint documentation to params
@@ -345,16 +345,17 @@ function ApiMiddleware.create_documented_stack(options)
     end
     
     -- Add route information for documentation extraction
+    -- Note: path and method should come from params, not client
     params.route_info = {
-      path = client.path,
-      method = client.method,
+      path = params.path or "unknown",
+      method = params.method or "unknown",
       endpoint_id = options.endpoint,
       validation_schema = options.validation_schema,
       authentication = options.authentication,
       rate_limiting = options.rate_limiting
     }
     
-    middleware(client, params)
+    middleware(client, params, final_handler)
   end
 end
 

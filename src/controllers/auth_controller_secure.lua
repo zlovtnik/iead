@@ -187,9 +187,9 @@ function AuthController.login(client, params)
       member_id = user.member_id,
       password_reset_required = user.password_reset_required
     },
-    session = {
+    tokens = {
       token = session.token,
-      expires_at = session.expires_at
+      refreshToken = session.token  -- For now, use same token as refresh token
     },
     request_id = request_id,
     timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
@@ -259,8 +259,11 @@ function AuthController.me(client, params)
   
   -- Extract token from Authorization header
   local token = nil
-  if client.headers and client.headers["Authorization"] then
-    token = client.headers["Authorization"]:match("^Bearer%s+(.+)$")
+  if client.headers then
+    local auth_header = client.headers["Authorization"] or client.headers["authorization"]
+    if auth_header then
+      token = auth_header:match("^Bearer%s+(.+)$")
+    end
   end
   
   if not token then
@@ -275,7 +278,7 @@ function AuthController.me(client, params)
   end
   
   -- Validate session and get user
-  local session, session_error = Session.validate(token)
+  local session, session_error = Session.find_by_token(token)
   if not session then
     log.warn("Invalid session token", {
       request_id = request_id,

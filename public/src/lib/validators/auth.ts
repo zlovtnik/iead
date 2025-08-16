@@ -7,7 +7,7 @@ import { requiredString, email, password, confirmPassword } from './common.js';
 
 export const loginSchema = z.object({
   username: requiredString('Username is required'),
-  password: requiredString('Password is required'),
+  password: password, // Use full password validation instead of just required string
 });
 
 export const registerSchema = z.object({

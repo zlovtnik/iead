@@ -5,6 +5,15 @@ local ApiResponse = require("src.application.middlewares.api_response")
 local ErrorHandler = require("src.application.middlewares.error_handler")
 local log = require("src.utils.log")
 
+-- Helper function to get table keys
+local function get_table_keys(t)
+  local keys = {}
+  for k, _ in pairs(t) do
+    table.insert(keys, k)
+  end
+  return keys
+end
+
 local RequestValidator = {}
 
 -- Validation rule types

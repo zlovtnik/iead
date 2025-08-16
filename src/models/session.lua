@@ -56,15 +56,26 @@ end
 
 -- Create new session with token
 -- @param user_id number The ID of the user to create session for
--- @param duration number Optional session duration in seconds (defaults to 24 hours)
+-- @param options table|number Optional session options or duration in seconds
 -- @return table Session object with token and expiration info
 -- @return string Error message if creation fails
-function Session.create(user_id, duration)
+function Session.create(user_id, options)
   if not user_id then
     return nil, "User ID is required"
   end
   
-  duration = duration or DEFAULT_SESSION_DURATION
+  -- Handle both old signature (user_id, duration) and new signature (user_id, options)
+  local duration = DEFAULT_SESSION_DURATION
+  local session_options = {}
+  
+  if type(options) == "number" then
+    -- Old signature: Session.create(user_id, duration)
+    duration = options
+  elseif type(options) == "table" then
+    -- New signature: Session.create(user_id, {duration = ..., ip_address = ..., etc})
+    duration = options.duration or DEFAULT_SESSION_DURATION
+    session_options = options
+  end
   
   local conn, env = Session.get_connection()
   
@@ -174,8 +185,8 @@ function Session.find_by_token(token)
   conn:close()
   env:close()
   
-  -- Convert boolean fields
-  session.is_active = (session.is_active == "1" or session.is_active == 1)
+  -- Convert boolean fields using consistent validation function
+  session.is_active = validation.normalize_boolean(session.is_active)
   
   return session
 end
