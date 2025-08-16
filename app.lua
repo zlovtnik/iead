@@ -1,4 +1,4 @@
-#!/usr/bin/env lua
+#!/usr/bin/env luajitjit
 -- app.lua
 -- Main application entry point for Church Management System
 
