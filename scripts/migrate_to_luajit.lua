@@ -1,4 +1,4 @@
-#!/usr/bin/env luajitjit
+#!/usr/bin/env luajit
 -- scripts/migrate_to_luajit.lua
 -- Migration script to transition the entire project to LuaJIT and luafun
 
@@ -6,7 +6,7 @@ local function update_shebang_lines()
     print("Updating shebang lines to use LuaJIT...")
     
     -- Find all Lua scripts with shebangs
-    local find_cmd = "find . -name '*.lua' -type f -exec grep -l '^#!/usr/bin/env luajit' {} \\;"
+    local find_cmd = "find . -name '*.lua' -type f -exec grep -l '^#!/usr/bin/env lua' {} \\;"
     local handle = io.popen(find_cmd)
     
     if not handle then
@@ -25,7 +25,7 @@ local function update_shebang_lines()
             file:close()
             
             -- Replace shebang
-            local new_content = content:gsub("#!/usr/bin/env luajit", "#!/usr/bin/env luajitjit")
+            local new_content = content:gsub("#!/usr/bin/env lua", "#!/usr/bin/env luajit")
             
             -- Write back if changed
             if new_content ~= content then

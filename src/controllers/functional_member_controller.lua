@@ -6,6 +6,9 @@ local json_utils = require("src.utils.json")
 local fun = require("src.utils.functional")
 local validation = require("src.utils.validation")
 
+-- Compatibility for unpack function
+local unpack = unpack or table.unpack
+
 local FunctionalMemberController = {}
 
 -- Functional pipeline for member data processing

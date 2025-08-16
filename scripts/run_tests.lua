@@ -1,4 +1,4 @@
-#!/usr/bin/env luajitjit
+#!/usr/bin/env luajit
 -- run_tests.lua
 -- Main test runner for Church Management System
 

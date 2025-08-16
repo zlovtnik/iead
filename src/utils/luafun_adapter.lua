@@ -4,6 +4,9 @@
 
 local fun = require("fun")
 
+-- Compatibility for unpack function
+local unpack = unpack or table.unpack
+
 local luafun_adapter = {}
 
 -- Re-export core luafun functions

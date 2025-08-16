@@ -145,6 +145,9 @@ end
 -- Partial application with placeholders
 advanced._ = {} -- placeholder sentinel
 
+-- Compatibility for unpack function
+local unpack = unpack or table.unpack
+
 function advanced.partial(func, ...)
     local partial_args = {...}
     return function(...)

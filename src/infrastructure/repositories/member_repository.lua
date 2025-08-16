@@ -5,6 +5,76 @@ local BaseRepository = require("src.infrastructure.db.base_repository")
 local fun = require("src.utils.functional")
 local DataProcessor = require("src.infrastructure.utils.data_processor")
 
+-- Private helper function to calculate age from date of birth
+-- @param date_of_birth string in YYYY-MM-DD format
+-- @return number|nil age in years, or nil if invalid/missing
+local function calculate_age_from_birth_date(date_of_birth)
+  if not date_of_birth or date_of_birth == "" then
+    return nil
+  end
+  
+  -- Parse year, month, day from date_of_birth (expecting YYYY-MM-DD format)
+  local birth_year, birth_month, birth_day = date_of_birth:match("(%d%d%d%d)%-(%d%d)%-(%d%d)")
+  if not birth_year or not birth_month or not birth_day then
+    return nil
+  end
+  
+  -- Convert to numbers
+  birth_year = tonumber(birth_year)
+  birth_month = tonumber(birth_month)
+  birth_day = tonumber(birth_day)
+  
+  -- Validate date components
+  if not birth_year or not birth_month or not birth_day or
+     birth_month < 1 or birth_month > 12 or
+     birth_day < 1 or birth_day > 31 then
+    return nil
+  end
+  
+  -- Get current date using os.date("*t") for precise date components
+  local current_date = os.date("*t")
+  local current_year = current_date.year
+  local current_month = current_date.month
+  local current_day = current_date.day
+  
+  -- Calculate age
+  local age = current_year - birth_year
+  
+  -- Subtract 1 if birthday hasn't occurred yet this year
+  if current_month < birth_month or 
+     (current_month == birth_month and current_day < birth_day) then
+    age = age - 1
+  end
+  
+  -- Return nil for negative ages (future birth dates)
+  return age >= 0 and age or nil
+end
+
+-- Private helper function to validate and normalize sort field
+-- @param sort_by string|nil the sort field to validate
+-- @return string|nil validated and normalized sort field, or nil if invalid
+local function validate_sort_field(sort_by)
+  if not sort_by or type(sort_by) ~= "string" then
+    return nil
+  end
+  
+  -- Normalize: trim whitespace and convert to lowercase
+  local normalized = sort_by:match("^%s*(.-)%s*$"):lower()
+  
+  if normalized == "" then
+    return nil
+  end
+  
+  -- Check against allowlist
+  if ALLOWED_MEMBER_SORT_FIELDS[normalized] then
+    return normalized
+  end
+  
+  -- Log warning for invalid sort field (you can replace this with actual logging)
+  -- For now, we'll just silently ignore invalid fields
+  return nil
+end
+
 -- Allowed fields for member filtering conditions (using functional approach)
 local ALLOWED_MEMBER_FILTER_FIELDS = {}
 local allowed_fields = {
@@ -13,6 +83,21 @@ local allowed_fields = {
 }
 for _, field in ipairs(allowed_fields) do
   ALLOWED_MEMBER_FILTER_FIELDS[field] = true
+end
+
+-- Allowed fields for member sorting (includes base fields and member-specific fields)
+local ALLOWED_MEMBER_SORT_FIELDS = {}
+local allowed_sort_fields = {
+  -- Base repository fields
+  "id", "created_at", "updated_at",
+  -- Member-specific fields
+  "first_name", "last_name", "email", "phone", "address", 
+  "date_of_birth", "membership_date", "is_active",
+  -- Computed fields (available in enhanced members)
+  "full_name", "age", "membership_years"
+}
+for _, field in ipairs(allowed_sort_fields) do
+  ALLOWED_MEMBER_SORT_FIELDS[field] = true
 end
 
 local MemberRepository = {}
@@ -368,13 +453,7 @@ function MemberRepository:get_enhanced_members(options)
     return DataProcessor.add_computed_fields({member}, {
       full_name = function(m) return self:get_full_name(m) end,
       age = function(m) 
-        if m.date_of_birth then
-          local birth_year = m.date_of_birth:match("(%d%d%d%d)")
-          if birth_year then
-            return tonumber(os.date("%Y")) - tonumber(birth_year)
-          end
-        end
-        return nil
+        return calculate_age_from_birth_date(m.date_of_birth)
       end,
       membership_years = function(m)
         if m.membership_date then
@@ -412,16 +491,13 @@ function MemberRepository:get_member_analytics()
   
   -- Group by age ranges
   analytics.by_age_range = DataProcessor.group_results(members, function(member)
-    if member.date_of_birth then
-      local birth_year = member.date_of_birth:match("(%d%d%d%d)")
-      if birth_year then
-        local age = tonumber(os.date("%Y")) - tonumber(birth_year)
-        if age < 18 then return "under_18"
-        elseif age < 30 then return "18_29"
-        elseif age < 50 then return "30_49"
-        elseif age < 65 then return "50_64"
-        else return "65_plus"
-        end
+    local age = calculate_age_from_birth_date(member.date_of_birth)
+    if age then
+      if age < 18 then return "under_18"
+      elseif age < 30 then return "18_29"
+      elseif age < 50 then return "30_49"
+      elseif age < 65 then return "50_64"
+      else return "65_plus"
       end
     end
     return "unknown"
@@ -504,13 +580,24 @@ function MemberRepository:filter_members_advanced(filter_options)
   -- Apply all filters
   local filtered_members = DataProcessor.apply_filters(members, filters)
   
-  -- Apply sorting if specified
+  -- Apply sorting if specified and valid
   if filter_options.sort_by then
-    local sort_criteria = {{
-      field = filter_options.sort_by,
-      direction = filter_options.sort_direction or "asc"
-    }}
-    filtered_members = DataProcessor.sort_results(filtered_members, sort_criteria)
+    local validated_sort_field = validate_sort_field(filter_options.sort_by)
+    if validated_sort_field then
+      local sort_criteria = {{
+        field = validated_sort_field,
+        direction = filter_options.sort_direction or "asc"
+      }}
+      filtered_members = DataProcessor.sort_results(filtered_members, sort_criteria)
+    else
+      -- Fallback to safe default sorting when invalid sort_by is provided
+      -- This prevents silent failures and ensures consistent ordering
+      local sort_criteria = {{
+        field = "last_name",  -- Safe default: sort by last name
+        direction = "asc"
+      }}
+      filtered_members = DataProcessor.sort_results(filtered_members, sort_criteria)
+    end
   end
   
   -- Apply pagination if specified
@@ -519,6 +606,45 @@ function MemberRepository:filter_members_advanced(filter_options)
   end
   
   return filtered_members, nil
+end
+
+-- Static function to calculate age from date of birth
+function MemberRepository.calculate_age(date_of_birth)
+  if not date_of_birth or type(date_of_birth) ~= "string" then
+    return nil
+  end
+  
+  -- Extract year, month, and day from date string (YYYY-MM-DD format)
+  local birth_year, birth_month, birth_day = date_of_birth:match("(%d%d%d%d)%-(%d%d)%-(%d%d)")
+  
+  if not birth_year or not birth_month or not birth_day then
+    return nil
+  end
+  
+  birth_year = tonumber(birth_year)
+  birth_month = tonumber(birth_month)
+  birth_day = tonumber(birth_day)
+  
+  if not birth_year or not birth_month or not birth_day then
+    return nil
+  end
+  
+  -- Get current date
+  local current_year = tonumber(os.date("%Y"))
+  local current_month = tonumber(os.date("%m"))
+  local current_day = tonumber(os.date("%d"))
+  
+  -- Calculate age
+  local age = current_year - birth_year
+  
+  -- Subtract 1 if birthday hasn't occurred yet this year
+  if current_month < birth_month or 
+     (current_month == birth_month and current_day < birth_day) then
+    age = age - 1
+  end
+  
+  -- Return nil for negative ages (future birth dates)
+  return age >= 0 and age or nil
 end
 
 return MemberRepository

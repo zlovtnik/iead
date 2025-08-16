@@ -247,6 +247,12 @@ function validation.validate_attendance_data(data)
   end
   
   if not data.status or not validation.is_valid_attendance_status(data.status) then
+    table.insert(errors, "Valid attendance status is required")
+  end
+  
+  return #errors == 0, errors
+end
+
 -- Validate member data using functional approach
 function validation.validate_member_data(data)
   if not data then

@@ -15,7 +15,7 @@ description = {
    license = "MIT"
 }
 dependencies = {
-   "lua >= 5.1, < 5.4",
+   "lua >= 5.1",
    "luasql-sqlite3",
    "lua-cjson",
    "luasocket",

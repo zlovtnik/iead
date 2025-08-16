@@ -35,6 +35,10 @@
   --gradient-accent: linear-gradient(135deg, var(--accent), var(--accent-light));
   --gradient-bg: linear-gradient(to bottom, var(--background), var(--secondary));
   --gradient-divine: linear-gradient(135deg, var(--divine-blue), #667EEA);
+  
+  /* Focus ring colors */
+  --ring-primary: rgba(74, 85, 104, 0.5); /* Primary ring with transparency */
+  --ring-accent: rgba(129, 199, 132, 0.5); /* Accent ring with transparency */
 }
 
 /* Custom base styles */
@@ -147,8 +151,8 @@
 	}
 
 	.btn-primary:focus {
-		@apply ring-purple-500;
-		box-shadow: var(--shadow-medium);
+		box-shadow: var(--shadow-medium), 0 0 0 3px var(--ring-primary);
+		outline: none;
 	}
 
 	.btn-secondary {
@@ -246,7 +250,7 @@
 	}
 
 	.form-input {
-		@apply block w-full rounded-lg border-2 border-gray-300 shadow-sm focus:border-secondary focus:ring-secondary;
+		@apply block w-full rounded-lg border-2 border-gray-300 shadow-sm;
 		font-family: var(--font-family);
 		font-size: 1rem;
 		padding: 0.75rem 1rem;
@@ -257,9 +261,10 @@
 	}
 
 	.form-input:focus {
-		box-shadow: 0 0 0 3px rgba(129, 199, 132, 0.3);
+		box-shadow: 0 0 0 3px var(--ring-accent);
 		border-color: var(--accent);
 		background: var(--background-light);
+		outline: none;
 	}
 
 	.form-label {

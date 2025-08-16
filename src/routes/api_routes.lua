@@ -96,11 +96,17 @@ function ApiRoutes.register()
   
   -- Member management endpoints
   router.register("/api/v1/members", {
+    OPTIONS = function(client, params)
+      send_cors_options(client)
+    end,
     GET = ApiMiddleware.protect(ExampleController.index, ExampleController.middleware.index),
     POST = ApiMiddleware.protect(ExampleController.create, ExampleController.middleware.create)
   })
   
   router.register("^/api/v1/members/(%d+)$", {
+    OPTIONS = function(client, params)
+      send_cors_options(client)
+    end,
     GET = ApiMiddleware.protect(ExampleController.show, ExampleController.middleware.show),
     PUT = ApiMiddleware.protect(ExampleController.update, ExampleController.middleware.update),
     DELETE = ApiMiddleware.protect(ExampleController.destroy, ExampleController.middleware.destroy)

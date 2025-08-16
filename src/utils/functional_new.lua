@@ -1,4 +1,4 @@
--- src/utils/functional.lua
+-- src/utils/functional_new.lua
 -- Functional programming utilities for Lua using luafun
 -- This module serves as the main functional programming interface
 

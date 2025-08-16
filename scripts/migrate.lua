@@ -1,4 +1,4 @@
-#!/usr/bin/env luajitjit
+#!/usr/bin/env luajit
 
 -- Database Migration System for Church Management
 -- Handles schema updates and data migrations between versions

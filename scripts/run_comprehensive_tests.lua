@@ -1,4 +1,4 @@
-#!/usr/bin/env luajitjit
+#!/usr/bin/env luajit
 -- scripts/run_comprehensive_tests.lua
 -- Comprehensive test runner with coverage and structured output
 
