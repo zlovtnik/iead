@@ -24,6 +24,9 @@ FROM alpine:latest
 # Install Lua
 RUN apk add --no-cache lua5.1
 
+# Install runtime dependencies in the final stage
+RUN apk add --no-cache sqlite-libs
+
 # Set working directory
 WORKDIR /app
 
