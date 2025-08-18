@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "church-management.fullname" . }}
+  labels:
+    {{- include "church-management.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "church-management.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "church-management.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "church-management.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+      - name: wait-for-postgres
+        image: postgres:15-alpine
+        command:
+        - sh
+        - -c
+        - |
+          until pg_isready -h {{ include "church-management.databaseHost" . }} -p {{ include "church-management.databasePort" . }} -U {{ include "church-management.databaseUsername" . }}; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+        env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "church-management.secretName" . }}
+              key: database-password
+      containers:
+      - name: {{ .Chart.Name }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.app.port }}
+          protocol: TCP
+        env:
+        - name: DB_HOST
+          value: {{ include "church-management.databaseHost" . | quote }}
+        - name: DB_PORT
+          value: {{ include "church-management.databasePort" . | quote }}
+        - name: DB_NAME
+          value: {{ include "church-management.databaseName" . | quote }}
+        - name: DB_USER
+          value: {{ include "church-management.databaseUsername" . | quote }}
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "church-management.secretName" . }}
+              key: database-password
+        - name: APP_HOST
+          value: {{ .Values.app.host | quote }}
+        - name: APP_PORT
+          value: {{ .Values.app.port | quote }}
+        - name: LUA_ENV
+          value: {{ .Values.app.environment | quote }}
+        {{- if .Values.healthcheck.enabled }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: {{ .Values.healthcheck.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.healthcheck.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.healthcheck.livenessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.healthcheck.livenessProbe.failureThreshold }}
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: {{ .Values.healthcheck.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.healthcheck.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.healthcheck.readinessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.healthcheck.readinessProbe.failureThreshold }}
+        {{- end }}
+        resources:
+          {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
