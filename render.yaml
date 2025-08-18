@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: church-management
+    env: docker
+    # Make sure to set DOCKER_USERNAME in your Render environment variables
+    # or replace ${DOCKER_USERNAME} with your actual Docker Hub username.
+    image:
+      url: docker.io/${DOCKER_USERNAME}/church-management:latest
+    healthCheckPath: /
+    httpPort: 8080
+    envVars:
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: redis-cache
+      - key: REDIS_PORT
+        fromService:
+          type: redis
+          name: redis-cache
+          property: port
+      - key: LUA_ENV
+        value: production
+
+  - type: redis
+    name: redis-cache
+    plan: free # Or choose a paid plan for production use
+    ipAllowList: [] # Allows access from anywhere. For production, you should restrict this.
+
