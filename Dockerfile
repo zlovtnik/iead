@@ -11,9 +11,8 @@ WORKDIR /app
 
 # Copy rockspec and install dependencies
 COPY *.rockspec ./
-# The --tree option specifies a directory for dependencies
-# The --only-deps flag ensures only dependencies are installed, not the app itself
-RUN luarocks-5.1 install --tree lua_modules --only-deps church-management-1.0-1.rockspec
+# Install dependencies with explicit PostgreSQL directory for Alpine Linux
+RUN luarocks-5.1 install --tree lua_modules --only-deps church-management-1.0-1.rockspec PGSQL_DIR=/usr PGSQL_INCDIR=/usr/include/postgresql
 
 # Copy the rest of the application source
 COPY . .
@@ -21,20 +20,15 @@ COPY . .
 # --- Final Stage ---
 FROM alpine:latest
 
-# Install Lua
-RUN apk add --no-cache lua5.1
-
-# Install runtime dependencies in the final stage
-RUN apk add --no-cache postgresql-libs
+# Install Lua and runtime dependencies
+RUN apk add --no-cache lua5.1 postgresql-libs
 
 # Set working directory
 WORKDIR /app
 
 # Copy installed dependencies from builder stage
-# Lua 5.1 paths are used here. Adjust if your project uses a different version.
 COPY --from=builder /app/lua_modules/lib/lua/5.1 /usr/lib/lua/5.1
 COPY --from=builder /app/lua_modules/share/lua/5.1 /usr/share/lua/5.1
-
 
 # Copy application code from builder stage
 COPY --from=builder /app .
