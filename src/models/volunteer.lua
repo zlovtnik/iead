@@ -1,20 +1,20 @@
 -- src/models/volunteer.lua
 -- Volunteer model for Church Management System
 
-local luasql = require("luasql.sqlite3")
+local luasql = require("luasql.postgres")
 local db_config = require("src.config.database")
 
 local Volunteer = {}
 
 -- Initialize database and create table if it doesn't exist
 function Volunteer.init_db()
-  local env = luasql.sqlite3()
-  local conn = env:connect(db_config.db_file)
-  
+  local env = luasql.postgres()
+  local conn = env:connect(db_config.database, db_config.user, db_config.password, db_config.host, db_config.port)
+
   -- Create volunteers table if it doesn't exist
   conn:execute[[
     CREATE TABLE IF NOT EXISTS volunteers (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       member_id INTEGER NOT NULL,
       event_id INTEGER,
       role TEXT NOT NULL,
@@ -25,17 +25,17 @@ function Volunteer.init_db()
       FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
     )
   ]]
-  
+
   conn:close()
   env:close()
-  
+
   print("Volunteers table initialized")
 end
 
 -- Get database connection
 function Volunteer.get_connection()
-  local env = luasql.sqlite3()
-  return env:connect(db_config.db_file), env
+  local env = luasql.postgres()
+  return env:connect(db_config.database, db_config.user, db_config.password, db_config.host, db_config.port), env
 end
 
 -- Find all volunteers
@@ -160,7 +160,7 @@ function Volunteer.create(data)
   end
   
   -- Get the inserted record
-  local cursor = conn:execute("SELECT * FROM volunteers WHERE rowid = last_insert_rowid()")
+  local cursor = conn:execute("SELECT * FROM volunteers WHERE id = currval('volunteers_id_seq')")
   local volunteer = cursor:fetch({}, "a")
   cursor:close()
   conn:close()

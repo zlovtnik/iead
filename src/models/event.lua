@@ -1,57 +1,57 @@
 -- src/models/event.lua
 -- Event model for Church Management System
 
-local luasql = require("luasql.sqlite3")
+local luasql = require("luasql.postgres")
 local db_config = require("src.config.database")
 
 local Event = {}
 
 -- Initialize database and create table if it doesn't exist
 function Event.init_db()
-  local env = luasql.sqlite3()
-  local conn = env:connect(db_config.db_file)
-  
+  local env = luasql.postgres()
+  local conn = env:connect(db_config.database, db_config.user, db_config.password, db_config.host, db_config.port)
+
   -- Create events table if it doesn't exist
   conn:execute[[
     CREATE TABLE IF NOT EXISTS events (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       title TEXT NOT NULL,
       description TEXT,
-      start_date DATETIME NOT NULL,
-      end_date DATETIME,
+      start_date TIMESTAMP NOT NULL,
+      end_date TIMESTAMP,
       location TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   ]]
-  
+
   conn:close()
   env:close()
-  
+
   print("Events table initialized")
 end
 
 -- Get database connection
 function Event.get_connection()
-  local env = luasql.sqlite3()
-  return env:connect(db_config.db_file), env
+  local env = luasql.postgres()
+  return env:connect(db_config.database, db_config.user, db_config.password, db_config.host, db_config.port), env
 end
 
 -- Find all events
 function Event.find_all()
   local conn, env = Event.get_connection()
   local cursor = conn:execute("SELECT * FROM events ORDER BY start_date DESC")
-  
+
   local events = {}
   local row = cursor:fetch({}, "a")
   while row do
     table.insert(events, row)
     row = cursor:fetch({}, "a")
   end
-  
+
   cursor:close()
   conn:close()
   env:close()
-  
+
   return events
 end
 
@@ -60,11 +60,11 @@ function Event.find_by_id(id)
   local conn, env = Event.get_connection()
   local cursor = conn:execute(string.format("SELECT * FROM events WHERE id = %d", id))
   local event = cursor:fetch({}, "a")
-  
+
   cursor:close()
   conn:close()
   env:close()
-  
+
   return event
 end
 
@@ -73,7 +73,7 @@ function Event.create(data)
   if not data.title or not data.start_date then
     return nil, "Missing required fields"
   end
-  
+
   local conn, env = Event.get_connection()
   local success, err = pcall(function()
     conn:execute(string.format(
@@ -85,20 +85,20 @@ function Event.create(data)
       (data.location or ""):gsub("'", "''")
     ))
   end)
-  
+
   if not success then
     conn:close()
     env:close()
     return nil, "Failed to create event: " .. (err or "Unknown error")
   end
-  
+
   -- Get the inserted event
-  local cursor = conn:execute("SELECT * FROM events WHERE rowid = last_insert_rowid()")
+  local cursor = conn:execute("SELECT * FROM events WHERE id = currval('events_id_seq')")
   local event = cursor:fetch({}, "a")
   cursor:close()
   conn:close()
   env:close()
-  
+
   return event
 end
 
@@ -107,20 +107,20 @@ function Event.update(id, data)
   if not data.title or not data.start_date then
     return nil, "Missing required fields"
   end
-  
+
   local conn, env = Event.get_connection()
-  
+
   -- Check if event exists
   local cursor = conn:execute(string.format("SELECT id FROM events WHERE id = %d", id))
   local exists = cursor:fetch()
   cursor:close()
-  
+
   if not exists then
     conn:close()
     env:close()
     return nil, "Event not found"
   end
-  
+
   -- Update event
   conn:execute(string.format(
     "UPDATE events SET title = '%s', description = '%s', start_date = '%s', end_date = '%s', location = '%s' WHERE id = %d",
@@ -131,56 +131,56 @@ function Event.update(id, data)
     (data.location or ""):gsub("'", "''"),
     id
   ))
-  
+
   -- Get updated event
   cursor = conn:execute(string.format("SELECT * FROM events WHERE id = %d", id))
   local event = cursor:fetch({}, "a")
   cursor:close()
   conn:close()
   env:close()
-  
+
   return event
 end
 
 -- Delete event
 function Event.delete(id)
   local conn, env = Event.get_connection()
-  
+
   -- Check if event exists
   local cursor = conn:execute(string.format("SELECT id FROM events WHERE id = %d", id))
   local exists = cursor:fetch()
   cursor:close()
-  
+
   if not exists then
     conn:close()
     env:close()
     return nil, "Event not found"
   end
-  
+
   -- Delete event
   conn:execute(string.format("DELETE FROM events WHERE id = %d", id))
   conn:close()
   env:close()
-  
+
   return true
 end
 
 -- Find upcoming events
 function Event.find_upcoming()
   local conn, env = Event.get_connection()
-  local cursor = conn:execute("SELECT * FROM events WHERE start_date > datetime('now') ORDER BY start_date ASC")
-  
+  local cursor = conn:execute("SELECT * FROM events WHERE start_date > NOW() ORDER BY start_date ASC")
+
   local events = {}
   local row = cursor:fetch({}, "a")
   while row do
     table.insert(events, row)
     row = cursor:fetch({}, "a")
   end
-  
+
   cursor:close()
   conn:close()
   env:close()
-  
+
   return events
 end
 

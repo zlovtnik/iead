@@ -1,41 +1,40 @@
 -- src/models/tithe.lua
 -- Tithe model for Church Management System
 
-local luasql = require("luasql.sqlite3")
+local luasql = require("luasql.postgres")
 local db_config = require("src.config.database")
 
 local Tithe = {}
 
 -- Initialize database and create table if it doesn't exist
 function Tithe.init_db()
-  local env = luasql.sqlite3()
-  local conn = env:connect(db_config.db_file)
-  
+  local env = luasql.postgres()
+  local conn = env:connect(db_config.database, db_config.user, db_config.password, db_config.host, db_config.port)
+
   -- Create tithes table if it doesn't exist
   conn:execute[[
     CREATE TABLE IF NOT EXISTS tithes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       member_id INTEGER NOT NULL,
       amount DECIMAL(10,2) NOT NULL,
       tithe_date DATE NOT NULL,
       payment_method TEXT,
-      is_paid BOOLEAN DEFAULT 0,
       notes TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE
     )
   ]]
-  
+
   conn:close()
   env:close()
-  
+
   print("Tithes table initialized")
 end
 
 -- Get database connection
 function Tithe.get_connection()
-  local env = luasql.sqlite3()
-  return env:connect(db_config.db_file), env
+  local env = luasql.postgres()
+  return env:connect(db_config.database, db_config.user, db_config.password, db_config.host, db_config.port), env
 end
 
 -- Find all tithes
@@ -160,7 +159,7 @@ function Tithe.create(data)
   end
   
   -- Get the inserted tithe
-  local cursor = conn:execute("SELECT * FROM tithes WHERE rowid = last_insert_rowid()")
+  local cursor = conn:execute("SELECT * FROM tithes WHERE id = currval('tithes_id_seq')")
   local tithe = cursor:fetch({}, "a")
   cursor:close()
   conn:close()
@@ -199,12 +198,11 @@ function Tithe.update(id, data)
   
   -- Update tithe
   conn:execute(string.format(
-    "UPDATE tithes SET member_id = %d, amount = %.2f, tithe_date = '%s', payment_method = '%s', is_paid = %d, notes = '%s' WHERE id = %d",
+    "UPDATE tithes SET member_id = %d, amount = %.2f, tithe_date = '%s', payment_method = '%s', notes = '%s' WHERE id = %d",
     tonumber(data.member_id),
     tonumber(data.amount),
     data.tithe_date:gsub("'", "''"),
     (data.payment_method or ""):gsub("'", "''"),
-    data.is_paid and 1 or 0,
     (data.notes or ""):gsub("'", "''"),
     id
   ))
