@@ -2,6 +2,13 @@
 -- app.lua
 -- Main application entry point for Church Management System
 
+-- Add local LuaRocks paths
+local home = os.getenv("HOME")
+if home then
+    package.path = home .. "/.luarocks/share/lua/5.4/?.lua;" .. home .. "/.luarocks/share/lua/5.4/?/init.lua;" .. package.path
+    package.cpath = home .. "/.luarocks/lib/lua/5.4/?.so;" .. package.cpath
+end
+
 local socket = require("socket")
 local http_utils = require("src.utils.http")
 local json_utils = require("src.utils.json")

@@ -1,21 +1,21 @@
 -- src/models/report.lua
 -- Report model for Church Management System
 
-local luasql = require("luasql.sqlite3")
+local luasql = require("luasql.postgres")
 local db_config = require("src.config.database")
 
 local Report = {}
 
 -- Get database connection
 function Report.get_connection()
-  local env = luasql.sqlite3()
-  return env:connect(db_config.db_file), env
+  local env = luasql.postgres()
+  return env:connect(db_config.database, db_config.user, db_config.password, db_config.host, db_config.port), env
 end
 
 -- Generate member attendance report
 function Report.member_attendance(start_date, end_date)
   local conn, env = Report.get_connection()
-  
+
   local query = [[
     SELECT m.id, m.name, m.email, 
            COUNT(a.id) as total_events,
@@ -26,28 +26,28 @@ function Report.member_attendance(start_date, end_date)
     LEFT JOIN attendance a ON m.id = a.member_id
     LEFT JOIN events e ON a.event_id = e.id
   ]]
-  
+
   if start_date and end_date then
     query = query .. string.format(" WHERE e.start_date BETWEEN '%s' AND '%s'", 
                                   start_date:gsub("'", "''"), 
                                   end_date:gsub("'", "''"))
   end
-  
+
   query = query .. " GROUP BY m.id ORDER BY m.name"
-  
+
   local cursor = conn:execute(query)
-  
+
   local report = {}
   local row = cursor:fetch({}, "a")
   while row do
     table.insert(report, row)
     row = cursor:fetch({}, "a")
   end
-  
+
   cursor:close()
   conn:close()
   env:close()
-  
+
   return report
 end
 

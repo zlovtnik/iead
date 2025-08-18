@@ -9,20 +9,32 @@ services:
     healthCheckPath: /
     httpPort: 8080
     envVars:
-      - key: REDIS_HOST
+      - key: DB_HOST
         fromService:
-          type: redis
-          name: redis-cache
-      - key: REDIS_PORT
+          type: pserv
+          name: postgres-db
+      - key: DB_PORT
         fromService:
-          type: redis
-          name: redis-cache
+          type: pserv
+          name: postgres-db
           property: port
+      - key: DB_NAME
+        value: church_management
+      - key: DB_USER
+        fromService:
+          type: pserv
+          name: postgres-db
+          property: user
+      - key: DB_PASSWORD
+        fromService:
+          type: pserv
+          name: postgres-db
+          property: password
       - key: LUA_ENV
         value: production
 
-  - type: redis
-    name: redis-cache
-    plan: free # Or choose a paid plan for production use
-    ipAllowList: [] # Allows access from anywhere. For production, you should restrict this.
-
+  - type: pserv
+    name: postgres-db
+    plan: starter # Choose appropriate plan for your needs
+    databaseName: church_management
+    user: church_user

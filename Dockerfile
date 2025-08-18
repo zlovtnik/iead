@@ -4,7 +4,7 @@
 FROM alpine:latest AS builder
 
 # Install build dependencies, including libraries required by Lua modules
-RUN apk add --no-cache build-base cmake git lua5.1 lua5.1-dev luarocks5.1 sqlite-dev openssl-dev
+RUN apk add --no-cache build-base cmake git lua5.1 lua5.1-dev luarocks5.1 postgresql-dev openssl-dev
 
 # Set working directory
 WORKDIR /app
@@ -25,7 +25,7 @@ FROM alpine:latest
 RUN apk add --no-cache lua5.1
 
 # Install runtime dependencies in the final stage
-RUN apk add --no-cache sqlite-libs
+RUN apk add --no-cache postgresql-libs
 
 # Set working directory
 WORKDIR /app

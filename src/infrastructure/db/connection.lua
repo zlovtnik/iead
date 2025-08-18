@@ -1,18 +1,20 @@
 -- src/infrastructure/db/connection.lua
 -- Database connection and query utilities with prepared statement support
 
-local luasql = require("luasql.sqlite3")
+local luasql = require("luasql.postgres")
 local log = require("src.utils.log")
 
 local db = {}
 
 -- Database configuration
 local DB_CONFIG = {
-    path = os.getenv("DB_PATH") or "church_management.db",
+    host = os.getenv("DB_HOST") or "localhost",
+    port = os.getenv("DB_PORT") or "5432",
+    database = os.getenv("DB_NAME") or "church_management",
+    user = os.getenv("DB_USER") or "postgres",
+    password = os.getenv("DB_PASSWORD") or "password",
     timeout = tonumber(os.getenv("DB_TIMEOUT")) or 30,
-    journal_mode = os.getenv("DB_JOURNAL_MODE") or "WAL",
-    synchronous = os.getenv("DB_SYNCHRONOUS") or "NORMAL",
-    foreign_keys = true
+    max_connections = tonumber(os.getenv("DB_MAX_CONNECTIONS")) or 10
 }
 
 -- Connection pool (simple implementation)
@@ -23,7 +25,7 @@ local connection_pool = {
 }
 
 -- Initialize database environment
-local env = luasql.sqlite3()
+local env = luasql.postgres()
 
 -- Get database connection from pool or create new one
 -- @return connection, error
@@ -43,24 +45,17 @@ function db.get_connection()
     end
 
     -- Create new connection if under limit
-    if connection_pool.current_connections < connection_pool.max_connections then
-        local conn, err = env:connect(DB_CONFIG.path)
+    if connection_pool.current_connections < DB_CONFIG.max_connections then
+        local conn, err = env:connect(DB_CONFIG.database, DB_CONFIG.user, DB_CONFIG.password, DB_CONFIG.host, DB_CONFIG.port)
         if not conn then
             return nil, "Failed to connect to database: " .. (err or "unknown error")
         end
 
-        -- Configure connection
-        conn:execute("PRAGMA journal_mode = " .. DB_CONFIG.journal_mode)
-        conn:execute("PRAGMA synchronous = " .. DB_CONFIG.synchronous)
-        if DB_CONFIG.foreign_keys then
-            conn:execute("PRAGMA foreign_keys = ON")
-        end
-        
         connection_pool.current_connections = connection_pool.current_connections + 1
         return conn, nil
     end
 
-    return nil, "Maximum connection limit reached"
+    return nil, "Connection pool limit reached"
 end
 
 -- Return connection to pool
@@ -109,8 +104,7 @@ function db.execute_prepared(query, params)
         return nil, err
     end
 
-    -- Simple parameter substitution for SQLite
-    -- Note: Real prepared statements would be better, but luasql.sqlite3 has limited support
+    -- Simple parameter substitution for PostgreSQL
     local safe_query = query
     if params then
         for i, param in ipairs(params) do
@@ -217,7 +211,7 @@ function db.execute(query, params)
         return nil, err
     end
 
-    -- Simple parameter substitution for SQLite
+    -- Simple parameter substitution for PostgreSQL
     local safe_query = query
     if params then
         for i, param in ipairs(params) do
@@ -261,7 +255,7 @@ function db.transaction(queries)
     end
 
     local success, result = pcall(function()
-        conn:execute("BEGIN TRANSACTION")
+        conn:execute("BEGIN")
         
         for _, query_info in ipairs(queries) do
             local query = query_info[1] or query_info.query
@@ -312,7 +306,7 @@ function db.last_insert_id()
         return nil, err
     end
 
-    local cursor = conn:execute("SELECT last_insert_rowid()")
+    local cursor = conn:execute("SELECT lastval()")
     local row = cursor:fetch()
     cursor:close()
     db.release_connection(conn)

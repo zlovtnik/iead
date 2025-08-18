@@ -16,7 +16,7 @@ description = {
 }
 dependencies = {
    "lua >= 5.1",
-   "luasql-sqlite3",
+   "luasql-postgres",
    "lua-cjson",
    "luasocket",
    "bcrypt"
